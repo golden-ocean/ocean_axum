@@ -1,10 +1,10 @@
 use std::convert::TryFrom;
 
-use shared::prelude::{AuditMetadata, DateTime, DeleteMetadata, Status, Utc, Uuid};
+use shared::prelude::{AuditMetadata, DateTime, DeleteMetadata, NaiveDate, Status, Utc, Uuid};
 
 use crate::domain::entity::User;
 use crate::domain::error::UserDomainError;
-use crate::domain::value_object::common::{OrganizationId, PositionId, UserId};
+use crate::domain::value_object::common::{OrganizationId, PositionId, RoleId, UserId};
 use crate::domain::value_object::user::{DataScope, Email, Gender, Mobile, WorkStatus};
 
 #[derive(Debug, sqlx::FromRow)]
@@ -16,7 +16,7 @@ pub struct UserRow {
     pub email: String,
     pub mobile: String,
     pub gender: String,
-    pub birthday: Option<DateTime<Utc>>,
+    pub birthday: Option<NaiveDate>,
     pub avatar: Option<String>,
 
     pub password_hash: String,
@@ -78,10 +78,18 @@ impl From<&User> for UserRow {
     }
 }
 
-impl TryFrom<UserRow> for User {
+pub struct UserAggregateModel {
+    pub row: UserRow,
+    pub role_ids: Vec<Uuid>,
+}
+
+impl TryFrom<UserAggregateModel> for User {
     type Error = UserDomainError;
 
-    fn try_from(row: UserRow) -> Result<Self, Self::Error> {
+    fn try_from(model: UserAggregateModel) -> Result<Self, Self::Error> {
+        let row = model.row;
+
+        // 1. 转换基础值对象（保持你原来的逻辑）
         let email_vo =
             Email::new(row.email).map_err(|e| UserDomainError::InvalidFields(e.to_string()))?;
         let mobile_vo =
@@ -96,6 +104,9 @@ impl TryFrom<UserRow> for User {
         let org_id_vo = row.organization_id.map(OrganizationId::from);
         let pos_id_vo = row.position_id.map(PositionId::from);
 
+        // 2. 将传入的角色关系转换为领域层强类型的 RoleId
+        let role_ids_vo: Vec<RoleId> = model.role_ids.into_iter().map(RoleId::from).collect();
+
         let audit_metadata = AuditMetadata {
             created_at: row.created_at,
             updated_at: row.updated_at,
@@ -107,6 +118,7 @@ impl TryFrom<UserRow> for User {
             deleted_by: row.deleted_by,
         };
 
+        // 3. 完美注入 reconstruct，角色不再是空数组！
         Ok(User::reconstruct(
             UserId::from(row.id),
             row.username,
@@ -128,7 +140,7 @@ impl TryFrom<UserRow> for User {
             status_vo,
             org_id_vo,
             pos_id_vo,
-            vec![], // 角色需要单独查询
+            role_ids_vo,
             audit_metadata,
             delete_metadata,
         ))

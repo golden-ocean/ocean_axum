@@ -1,0 +1,308 @@
+use std::collections::HashSet;
+
+use async_trait::async_trait;
+use sqlx::{Pool, Postgres};
+
+use shared::prelude::Uuid;
+
+use crate::domain::entity::User;
+use crate::domain::repository::UserRepository;
+use crate::domain::repository::error::UserRepoError;
+use crate::domain::value_object::common::UserId;
+use crate::infrastructure::persistence::models::{UserAggregateModel, UserRow};
+
+/// 基于 PostgreSQL 的用户数据仓储实现适配器
+pub struct PostgresUserRepository {
+    pool: Pool<Postgres>,
+}
+
+impl PostgresUserRepository {
+    pub fn new(pool: Pool<Postgres>) -> Self {
+        Self { pool }
+    }
+
+    /// 严格拦截数据库物理层报错，将其转译为领域边界清晰的 RepoError
+    fn map_sqlx_error(e: sqlx::Error) -> UserRepoError {
+        if let sqlx::Error::Database(pool_err) = &e {
+            if pool_err.is_unique_violation() {
+                let constraint = pool_err.constraint().unwrap_or_default();
+                return match constraint {
+                    "uk_sys_user_username" => UserRepoError::UsernameConflict,
+                    "uk_sys_user_email" => UserRepoError::EmailConflict,
+                    "uk_sys_user_mobile" => UserRepoError::PhoneConflict,
+                    _ => UserRepoError::UnknownConflict(constraint.to_string()),
+                };
+            }
+        }
+        UserRepoError::Unexpected(e.to_string())
+    }
+
+    /// 高效的私有恢复管道：利用现代 Rust 惯用法 .try_into() 穿透防腐大门
+    async fn assemble_user(&self, row: UserRow) -> Result<User, UserRepoError> {
+        let user_id = row.id;
+
+        // 从中间关系表获取该用户当前拥有的全部角色零件
+        let role_ids: Vec<Uuid> =
+            sqlx::query_scalar("SELECT role_id FROM sys_user_role WHERE user_id = $1")
+                .bind(user_id)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(Self::map_sqlx_error)?;
+
+        // 一口气转换为强类型的充血领域聚合根
+        let user: User = UserAggregateModel { row, role_ids }
+            .try_into()
+            .map_err(|e| UserRepoError::Unexpected(format!("领域模型重建失败: {:?}", e)))?;
+
+        Ok(user)
+    }
+}
+
+#[async_trait]
+impl UserRepository for PostgresUserRepository {
+    /// 统一保存行为 (Upsert - 整体替换并持久化聚合根不变量)
+    async fn save(&self, user: &User) -> Result<(), UserRepoError> {
+        let row = UserRow::from(user);
+
+        // 开启数据库事务，确保主表和关联关系多表更新满足 ACID 特性
+        let mut tx = self.pool.begin().await.map_err(Self::map_sqlx_error)?;
+
+        // 1. 全量 Upsert 写入主表 sys_user（已补齐 emp_no 和 is_builtin 状态同步）
+        sqlx::query!(
+            r#"
+            INSERT INTO sys_user (
+                id, username, emp_no, name, email, mobile, gender, birthday, avatar,
+                password_hash, salt, password_updated_at, work_status, data_scope,
+                is_builtin, sort, remark, status,
+                organization_id, position_id,
+                created_at, updated_at, created_by, updated_by, deleted_at, deleted_by
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9,
+                $10, $11, $12, $13, $14, $15, $16, $17, $18,
+                $19, $20, $21, $22, $23, $24, $25, $26
+            )
+            ON CONFLICT (id) DO UPDATE SET
+                username = EXCLUDED.username,
+                emp_no = EXCLUDED.emp_no,
+                name = EXCLUDED.name,
+                email = EXCLUDED.email,
+                mobile = EXCLUDED.mobile,
+                gender = EXCLUDED.gender,
+                birthday = EXCLUDED.birthday,
+                avatar = EXCLUDED.avatar,
+                password_hash = EXCLUDED.password_hash,
+                salt = EXCLUDED.salt,
+                password_updated_at = EXCLUDED.password_updated_at,
+                work_status = EXCLUDED.work_status,
+                data_scope = EXCLUDED.data_scope,
+                is_builtin = EXCLUDED.is_builtin,
+                sort = EXCLUDED.sort,
+                remark = EXCLUDED.remark,
+                status = EXCLUDED.status,
+                organization_id = EXCLUDED.organization_id,
+                position_id = EXCLUDED.position_id,
+                updated_at = EXCLUDED.updated_at,
+                updated_by = EXCLUDED.updated_by,
+                deleted_at = EXCLUDED.deleted_at,
+                deleted_by = EXCLUDED.deleted_by
+            "#,
+            row.id,
+            row.username,
+            row.emp_no,
+            row.name,
+            row.email,
+            row.mobile,
+            row.gender,
+            row.birthday,
+            row.avatar,
+            row.password_hash,
+            row.salt,
+            row.password_updated_at,
+            row.work_status,
+            row.data_scope,
+            row.is_builtin,
+            row.sort,
+            row.remark,
+            row.status,
+            row.organization_id,
+            row.position_id,
+            row.created_at,
+            row.updated_at,
+            row.created_by,
+            row.updated_by,
+            row.deleted_at,
+            row.deleted_by
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(Self::map_sqlx_error)?;
+
+        // 2. 高能“内存集合比对”断层优化：获取 DB 历史快照
+        let pool_roles = sqlx::query!(
+            "SELECT role_id FROM sys_user_role WHERE user_id = $1",
+            row.id
+        )
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(Self::map_sqlx_error)?;
+
+        let pool_role_set: HashSet<Uuid> = pool_roles.into_iter().map(|r| r.role_id).collect();
+        let current_role_set: HashSet<Uuid> = user.role_ids().iter().map(|r| r.value()).collect();
+
+        // 计算严格的对称差集，按需触发写盘，零资源浪费
+        let roles_to_delete: Vec<Uuid> = pool_role_set
+            .difference(&current_role_set)
+            .cloned()
+            .collect();
+        let roles_to_insert: Vec<Uuid> = current_role_set
+            .difference(&pool_role_set)
+            .cloned()
+            .collect();
+
+        // 3. 执行物理差异刷新
+        if !roles_to_delete.is_empty() {
+            sqlx::query!(
+                "DELETE FROM sys_user_role WHERE user_id = $1 AND role_id = ANY($2)",
+                row.id,
+                &roles_to_delete
+            )
+            .execute(&mut *tx)
+            .await
+            .map_err(Self::map_sqlx_error)?;
+        }
+
+        if !roles_to_insert.is_empty() {
+            // 利用 PostgreSQL 特性优化：将单个用户 ID 绑定，并利用 UNNEST 解包数组，消灭重复声明的用户向量
+            sqlx::query!(
+                r#"
+                INSERT INTO sys_user_role (user_id, role_id)
+                SELECT $1, * FROM UNNEST($2::uuid[])
+                "#,
+                row.id,
+                &roles_to_insert
+            )
+            .execute(&mut *tx)
+            .await
+            .map_err(Self::map_sqlx_error)?;
+        }
+
+        // 提交整个聚合根更新周期内的事务
+        tx.commit().await.map_err(Self::map_sqlx_error)?;
+        Ok(())
+    }
+
+    /// 级联物理删除
+    async fn delete(&self, user_id: &UserId) -> Result<(), UserRepoError> {
+        let mut tx = self.pool.begin().await.map_err(Self::map_sqlx_error)?;
+
+        // 联动清理多对多关系表，守护关系型数据库的完整性约束
+        sqlx::query!(
+            "DELETE FROM sys_user_role WHERE user_id = $1",
+            user_id.value()
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(Self::map_sqlx_error)?;
+
+        sqlx::query!("DELETE FROM sys_user WHERE id = $1", user_id.value())
+            .execute(&mut *tx)
+            .await
+            .map_err(Self::map_sqlx_error)?;
+
+        tx.commit().await.map_err(Self::map_sqlx_error)?;
+        Ok(())
+    }
+
+    /// 通过 ID 查找用户
+    async fn find_by_id(&self, id: &UserId) -> Result<Option<User>, UserRepoError> {
+        let row_opt = sqlx::query_as!(
+            UserRow,
+            "SELECT * FROM sys_user WHERE id = $1 AND deleted_at IS NULL",
+            id.value()
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(Self::map_sqlx_error)?;
+
+        match row_opt {
+            Some(row) => {
+                let user = self.assemble_user(row).await?;
+                Ok(Some(user))
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// 通过用户名检索用户
+    async fn find_by_username(&self, username: &str) -> Result<Option<User>, UserRepoError> {
+        let row_opt = sqlx::query_as!(
+            UserRow,
+            "SELECT * FROM sys_user WHERE username = $1 AND deleted_at IS NULL",
+            username
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(Self::map_sqlx_error)?;
+
+        match row_opt {
+            Some(row) => {
+                let user = self.assemble_user(row).await?;
+                Ok(Some(user))
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// 通过手机号检索用户
+    async fn find_by_mobile(&self, mobile: &str) -> Result<Option<User>, UserRepoError> {
+        let row_opt = sqlx::query_as!(
+            UserRow,
+            "SELECT * FROM sys_user WHERE mobile = $1 AND deleted_at IS NULL",
+            mobile
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(Self::map_sqlx_error)?;
+
+        match row_opt {
+            Some(row) => {
+                let user = self.assemble_user(row).await?;
+                Ok(Some(user))
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// 通过邮箱检索用户
+    async fn find_by_email(&self, email: &str) -> Result<Option<User>, UserRepoError> {
+        let row_opt = sqlx::query_as!(
+            UserRow,
+            "SELECT * FROM sys_user WHERE email = $1 AND deleted_at IS NULL",
+            email
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(Self::map_sqlx_error)?;
+
+        match row_opt {
+            Some(row) => {
+                let user = self.assemble_user(row).await?;
+                Ok(Some(user))
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// 检测用户名的全局冲突不变量 (防重校验)
+    async fn exists_by_username(&self, username: &str) -> Result<bool, UserRepoError> {
+        let exists = sqlx::query_scalar!(
+            "SELECT EXISTS(SELECT 1 FROM sys_user WHERE username = $1 AND deleted_at IS NULL)",
+            username
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(Self::map_sqlx_error)?;
+
+        Ok(exists.unwrap_or(false))
+    }
+}

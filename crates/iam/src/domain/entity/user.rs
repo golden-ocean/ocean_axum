@@ -1,4 +1,4 @@
-use shared::prelude::{AuditMetadata, DateTime, DeleteMetadata, Status, Utc, Uuid};
+use shared::prelude::{AuditMetadata, DateTime, DeleteMetadata, NaiveDate, Status, Utc, Uuid};
 
 use crate::domain::error::UserDomainError;
 use crate::domain::value_object::common::{OrganizationId, PositionId, RoleId, UserId};
@@ -13,7 +13,7 @@ pub struct User {
     email: Email,
     mobile: Mobile,
     gender: Gender,
-    birthday: Option<DateTime<Utc>>,
+    birthday: Option<NaiveDate>,
     avatar: Option<String>,
 
     password_hash: String,
@@ -183,7 +183,7 @@ impl User {
         email: Email,
         mobile: Mobile,
         gender: Gender,
-        birthday: Option<DateTime<Utc>>,
+        birthday: Option<NaiveDate>,
         avatar: Option<String>,
         work_status: WorkStatus,
         data_scope: DataScope,
@@ -245,7 +245,7 @@ impl User {
     pub fn gender(&self) -> &Gender {
         &self.gender
     }
-    pub fn birthday(&self) -> Option<DateTime<Utc>> {
+    pub fn birthday(&self) -> Option<NaiveDate> {
         self.birthday
     }
     pub fn avatar(&self) -> Option<&str> {

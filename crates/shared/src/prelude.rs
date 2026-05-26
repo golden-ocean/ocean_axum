@@ -14,7 +14,7 @@ pub use crate::types::status::Status;
 // pub use crate::infrastructure::log::init_logger;
 
 // 4. 导出常用的第三方库工具 (避免在业务 crate 重复引入)
-pub use chrono::{DateTime, Utc};
+pub use chrono::{DateTime, NaiveDate, Utc};
 pub use sqlx::{FromRow, PgPool};
 pub use tracing::{debug, error, info, warn};
 pub use uuid::Uuid;

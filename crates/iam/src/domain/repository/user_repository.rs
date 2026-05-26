@@ -12,9 +12,6 @@ pub trait UserRepository: Send + Sync {
     /// 通过 ID 删除 物理删除
     async fn delete(&self, user_id: &UserId) -> Result<(), UserRepoError>;
 
-    /// 通过 ID 删除 软删除
-    async fn soft_delete(&self, user_id: &UserId) -> Result<(), UserRepoError>;
-
     /// 通过 ID 查找用户
     async fn find_by_id(&self, id: &UserId) -> Result<Option<User>, UserRepoError>;
 
