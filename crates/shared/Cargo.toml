@@ -1,0 +1,30 @@
+[package]
+name = "shared"
+version = "0.1.0"
+edition = { workspace = true }
+
+[dependencies]
+# 核心框架与运行时
+tokio = { workspace = true }
+axum = { workspace = true }
+
+# 序列化与数据处理
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# 数据库与时间
+sqlx = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+
+# 错误处理
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# 日志
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# 配置与工具
+dotenvy = { workspace = true }
+config = { workspace = true }
