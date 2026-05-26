@@ -2,12 +2,12 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Default)]
-pub struct SoftDelete {
+pub struct DeleteMetadata {
     pub deleted_at: Option<DateTime<Utc>>,
     pub deleted_by: Option<Uuid>,
 }
 
-impl SoftDelete {
+impl DeleteMetadata {
     /// 执行软删除动作
     pub fn mark_deleted(&mut self, operator_id: Uuid) {
         self.deleted_at = Some(Utc::now());

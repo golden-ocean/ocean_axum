@@ -1,3 +1,3 @@
-pub mod audit;
-pub mod soft_delete;
+pub mod audit_metadata;
+pub mod delete_metadata;
 pub mod status;

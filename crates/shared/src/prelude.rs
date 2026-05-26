@@ -1,8 +1,8 @@
 // 1. 导出领域与接口类型
 pub use crate::http::pagination::{PageRes, Pagination};
 pub use crate::http::response::Res;
-pub use crate::types::audit::AuditMetadata;
-pub use crate::types::soft_delete::SoftDelete;
+pub use crate::types::audit_metadata::AuditMetadata;
+pub use crate::types::delete_metadata::DeleteMetadata;
 pub use crate::types::status::Status;
 
 // 2. 导出全局错误与结果
