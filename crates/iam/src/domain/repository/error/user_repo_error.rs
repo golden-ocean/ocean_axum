@@ -12,6 +12,8 @@ pub enum UserRepoError {
     PhoneConflict,
 
     // --- 兜底与公共错误 ---
+    #[error("数据库底层数据不一致/损坏: {0}")]
+    DataInconsistent(String),
     #[error("未知字段冲突: {0}")]
     UnknownConflict(String),
     #[error("并发版本冲突")]

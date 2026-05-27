@@ -8,8 +8,9 @@ use shared::prelude::Uuid;
 use crate::domain::entity::User;
 use crate::domain::repository::UserRepository;
 use crate::domain::repository::error::UserRepoError;
-use crate::domain::value_object::common::UserId;
-use crate::infrastructure::persistence::models::{UserAggregateModel, UserRow};
+use crate::domain::value_object::common::{RoleId, UserId};
+use crate::infrastructure::persistence::mapper::UserMapper;
+use crate::infrastructure::persistence::model::UserRow;
 
 /// 基于 PostgreSQL 的用户数据仓储实现适配器
 pub struct PostgresUserRepository {
@@ -21,7 +22,6 @@ impl PostgresUserRepository {
         Self { pool }
     }
 
-    /// 严格拦截数据库物理层报错，将其转译为领域边界清晰的 RepoError
     fn map_sqlx_error(e: sqlx::Error) -> UserRepoError {
         if let sqlx::Error::Database(pool_err) = &e {
             if pool_err.is_unique_violation() {
@@ -37,22 +37,20 @@ impl PostgresUserRepository {
         UserRepoError::Unexpected(e.to_string())
     }
 
-    /// 高效的私有恢复管道：利用现代 Rust 惯用法 .try_into() 穿透防腐大门
     async fn assemble_user(&self, row: UserRow) -> Result<User, UserRepoError> {
         let user_id = row.id;
 
-        // 从中间关系表获取该用户当前拥有的全部角色零件
-        let role_ids: Vec<Uuid> =
+        // 从中间关系表获取该用户当前拥建立多对多的角色 ID 集合
+        let db_roles: Vec<Uuid> =
             sqlx::query_scalar("SELECT role_id FROM sys_user_role WHERE user_id = $1")
                 .bind(user_id)
                 .fetch_all(&self.pool)
                 .await
                 .map_err(Self::map_sqlx_error)?;
 
-        // 一口气转换为强类型的充血领域聚合根
-        let user: User = UserAggregateModel { row, role_ids }
-            .try_into()
-            .map_err(|e| UserRepoError::Unexpected(format!("领域模型重建失败: {:?}", e)))?;
+        let role_ids: Vec<RoleId> = db_roles.into_iter().map(RoleId::from).collect();
+
+        let user = UserMapper::to_entity(row, role_ids)?;
 
         Ok(user)
     }
@@ -62,12 +60,12 @@ impl PostgresUserRepository {
 impl UserRepository for PostgresUserRepository {
     /// 统一保存行为 (Upsert - 整体替换并持久化聚合根不变量)
     async fn save(&self, user: &User) -> Result<(), UserRepoError> {
-        let row = UserRow::from(user);
+        let row = UserMapper::to_row(user);
 
         // 开启数据库事务，确保主表和关联关系多表更新满足 ACID 特性
         let mut tx = self.pool.begin().await.map_err(Self::map_sqlx_error)?;
 
-        // 1. 全量 Upsert 写入主表 sys_user（已补齐 emp_no 和 is_builtin 状态同步）
+        // 1. 全量 Upsert 写入主表 sys_user
         sqlx::query!(
             r#"
             INSERT INTO sys_user (
@@ -137,7 +135,7 @@ impl UserRepository for PostgresUserRepository {
         .await
         .map_err(Self::map_sqlx_error)?;
 
-        // 2. 高能“内存集合比对”断层优化：获取 DB 历史快照
+        // 2. 内存集合比对优化：获取数据库内的多对多中间表历史快照
         let pool_roles = sqlx::query!(
             "SELECT role_id FROM sys_user_role WHERE user_id = $1",
             row.id
@@ -149,7 +147,7 @@ impl UserRepository for PostgresUserRepository {
         let pool_role_set: HashSet<Uuid> = pool_roles.into_iter().map(|r| r.role_id).collect();
         let current_role_set: HashSet<Uuid> = user.role_ids().iter().map(|r| r.value()).collect();
 
-        // 计算严格的对称差集，按需触发写盘，零资源浪费
+        // 严格比对对称差集，按实际差额精准操作
         let roles_to_delete: Vec<Uuid> = pool_role_set
             .difference(&current_role_set)
             .cloned()
@@ -159,7 +157,7 @@ impl UserRepository for PostgresUserRepository {
             .cloned()
             .collect();
 
-        // 3. 执行物理差异刷新
+        // 3. 执行物理关系网变更刷新
         if !roles_to_delete.is_empty() {
             sqlx::query!(
                 "DELETE FROM sys_user_role WHERE user_id = $1 AND role_id = ANY($2)",
@@ -172,7 +170,6 @@ impl UserRepository for PostgresUserRepository {
         }
 
         if !roles_to_insert.is_empty() {
-            // 利用 PostgreSQL 特性优化：将单个用户 ID 绑定，并利用 UNNEST 解包数组，消灭重复声明的用户向量
             sqlx::query!(
                 r#"
                 INSERT INTO sys_user_role (user_id, role_id)
@@ -186,7 +183,7 @@ impl UserRepository for PostgresUserRepository {
             .map_err(Self::map_sqlx_error)?;
         }
 
-        // 提交整个聚合根更新周期内的事务
+        // 提交事务
         tx.commit().await.map_err(Self::map_sqlx_error)?;
         Ok(())
     }
@@ -195,7 +192,6 @@ impl UserRepository for PostgresUserRepository {
     async fn delete(&self, user_id: &UserId) -> Result<(), UserRepoError> {
         let mut tx = self.pool.begin().await.map_err(Self::map_sqlx_error)?;
 
-        // 联动清理多对多关系表，守护关系型数据库的完整性约束
         sqlx::query!(
             "DELETE FROM sys_user_role WHERE user_id = $1",
             user_id.value()
