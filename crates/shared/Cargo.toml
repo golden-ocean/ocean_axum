@@ -28,3 +28,8 @@ tracing-subscriber = { workspace = true }
 # 配置与工具
 dotenvy = { workspace = true }
 config = { workspace = true }
+
+
+[features]
+default = []
+export-i18n = []

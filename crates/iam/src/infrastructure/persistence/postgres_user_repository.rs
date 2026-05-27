@@ -189,7 +189,7 @@ impl UserRepository for PostgresUserRepository {
     }
 
     /// 级联物理删除
-    async fn delete(&self, user_id: &UserId) -> Result<(), UserRepoError> {
+    async fn remove(&self, user_id: &UserId) -> Result<(), UserRepoError> {
         let mut tx = self.pool.begin().await.map_err(Self::map_sqlx_error)?;
 
         sqlx::query!(
@@ -289,16 +289,42 @@ impl UserRepository for PostgresUserRepository {
         }
     }
 
-    /// 检测用户名的全局冲突不变量 (防重校验)
+    /// username 唯一性
     async fn exists_by_username(&self, username: &str) -> Result<bool, UserRepoError> {
         let exists = sqlx::query_scalar!(
-            "SELECT EXISTS(SELECT 1 FROM sys_user WHERE username = $1 AND deleted_at IS NULL)",
-            username
-        )
-        .fetch_one(&self.pool)
-        .await
-        .map_err(Self::map_sqlx_error)?;
+                r#"SELECT EXISTS(SELECT 1 FROM sys_user WHERE username = $1 AND deleted_at IS NULL) as "exists!""#,
+                username
+            )
+            .fetch_one(&self.pool)
+            .await
+            .map_err(Self::map_sqlx_error)?;
 
-        Ok(exists.unwrap_or(false))
+        Ok(exists)
+    }
+
+    /// email 唯一性
+    async fn exists_by_email(&self, email: &str) -> Result<bool, UserRepoError> {
+        let exists = sqlx::query_scalar!(
+                r#"SELECT EXISTS(SELECT 1 FROM sys_user WHERE email = $1 AND deleted_at IS NULL) as "exists!""#,
+                email
+            )
+            .fetch_one(&self.pool)
+            .await
+            .map_err(Self::map_sqlx_error)?;
+
+        Ok(exists)
+    }
+
+    /// mobile 唯一性
+    async fn exists_by_mobile(&self, mobile: &str) -> Result<bool, UserRepoError> {
+        let exists = sqlx::query_scalar!(
+                r#"SELECT EXISTS(SELECT 1 FROM sys_user WHERE mobile = $1 AND deleted_at IS NULL) as "exists!""#,
+                mobile
+            )
+            .fetch_one(&self.pool)
+            .await
+            .map_err(Self::map_sqlx_error)?;
+
+        Ok(exists)
     }
 }

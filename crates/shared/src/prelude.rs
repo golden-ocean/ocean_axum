@@ -6,7 +6,7 @@ pub use crate::types::delete_metadata::DeleteMetadata;
 pub use crate::types::status::Status;
 
 // 2. 导出全局错误与结果
-// pub use crate::error::AppError;
+pub use crate::error::app_error::AppError;
 
 // 3. 导出基础设施
 // pub use crate::infrastructure::configs::{AppConfig, get_config};
@@ -15,6 +15,7 @@ pub use crate::types::status::Status;
 
 // 4. 导出常用的第三方库工具 (避免在业务 crate 重复引入)
 pub use chrono::{DateTime, NaiveDate, Utc};
+pub use serde::{Deserialize, Serialize};
 pub use sqlx::{FromRow, PgPool};
 pub use tracing::{debug, error, info, warn};
 pub use uuid::Uuid;

@@ -2,30 +2,30 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum UserDomainError {
-    #[error("用户名称重复")]
+    #[error("IAM_USER_USERNAME_ALREADY_EXISTS")]
     UsernameAlreadyExists,
 
-    #[error("电子邮箱格式错误")]
+    #[error("IAM_USER_EMAIL_INVALID_FORMAT")]
     EmailInvalid,
-    #[error("电子邮箱必须填写")]
+    #[error("IAM_USER_EMAIL_CANNOT_BE_EMPTY")]
     EmailEmpty,
-    #[error("电子邮箱重复")]
+    #[error("IAM_USER_EMAIL_ALREADY_EXISTS")]
     EmailAlreadyExists,
 
-    #[error("电话格式错误")]
+    #[error("IAM_USER_MOBILE_INVALID_FORMAT")]
     MobileInvalid,
-    #[error("电话必须填写")]
+    #[error("IAM_USER_MOBILE_CANNOT_BE_EMPTY")]
     MobileEmpty,
-    #[error("移动电话重复")]
+    #[error("IAM_USER_MOBILE_ALREADY_EXISTS")]
     MobileAlreadyExists,
 
-    #[error("用户账号暂停使用")]
+    #[error("IAM_USER_ACCOUNT_SUSPENDED")]
     UserSuspended,
-    #[error("用户不存在")]
+    #[error("IAM_USER_USER_NOT_FOUND")]
     UserNotFound,
 
-    #[error("系统内置资源不能修改或删除")]
+    #[error("IAM_SUSER_YSTEM_RESOURCE_PROTECTED")]
     SystemResourceProtected,
-    #[error("字段格式错误: {0}")]
+    #[error("IAM_USER_INVALID_FIELDS: {0}")]
     InvalidFields(String),
 }

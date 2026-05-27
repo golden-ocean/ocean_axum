@@ -20,7 +20,7 @@ pub struct Res<T> {
     pub success: bool,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub error_code: Option<u32>,
+    pub error_code: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error_message: Option<String>,
@@ -53,11 +53,11 @@ where
     }
 
     // 错误响应
-    pub fn err(code: u32, message: &str) -> Self {
+    pub fn err(code: impl Into<String>, message: &str) -> Self {
         Self {
             success: false,
             data: None,
-            error_code: Some(code),
+            error_code: Some(code.into()),
             error_message: Some(message.into()),
             trace_id: get_trace_id(),
             host: get_hostname(),

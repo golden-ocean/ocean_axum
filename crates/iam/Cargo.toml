@@ -19,7 +19,12 @@ serde_json = { workspace = true }
 
 # 错误处理
 thiserror = { workspace = true }
+anyhow = { workspace = true }
 
 # 字段验证
 validator = { workspace = true }
 regex = { workspace = true }
+
+[features]
+default = []
+export-i18n = []
