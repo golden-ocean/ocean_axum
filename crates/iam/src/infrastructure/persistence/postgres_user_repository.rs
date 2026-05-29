@@ -210,11 +210,11 @@ impl UserRepository for PostgresUserRepository {
     }
 
     /// 通过 ID 查找用户
-    async fn find_by_id(&self, id: &UserId) -> Result<Option<User>, UserRepoError> {
+    async fn find_by_id(&self, user_id: &UserId) -> Result<Option<User>, UserRepoError> {
         let row_opt = sqlx::query_as!(
             UserRow,
             "SELECT * FROM sys_user WHERE id = $1 AND deleted_at IS NULL",
-            id.value()
+            user_id.value()
         )
         .fetch_optional(&self.pool)
         .await

@@ -13,7 +13,7 @@ pub trait UserRepository: Send + Sync {
     async fn remove(&self, user_id: &UserId) -> Result<(), UserRepoError>;
 
     /// 通过 ID 查找用户
-    async fn find_by_id(&self, id: &UserId) -> Result<Option<User>, UserRepoError>;
+    async fn find_by_id(&self, user_id: &UserId) -> Result<Option<User>, UserRepoError>;
 
     /// 通过用户名查找用户 (登录时常用)
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, UserRepoError>;

@@ -16,12 +16,17 @@ impl Default for Pagination {
 
 impl Pagination {
     pub fn limit(&self) -> i64 {
-        self.page_size.min(100) as i64
+        // 1. 先用 max(1) 斩断前端传 0 的恶作剧：如果传 0，强制变成 1
+        // 2. 再用 min(100) 封死黑客大宗捞数的胃口：如果传 99999，强制压回 100
+        self.page_size.max(1).min(100) as i64
     }
 
     pub fn offset(&self) -> i64 {
-        let p = if self.page < 1 { 1 } else { self.page };
-        ((p - 1) * self.page_size) as i64
+        // 页码防自残：哪怕传 page = 0，也强制修正为 1
+        let p = self.page.max(1);
+        let size = self.page_size.max(1);
+
+        ((p - 1) * size) as i64
     }
 }
 
