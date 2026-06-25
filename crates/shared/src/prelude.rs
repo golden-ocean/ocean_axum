@@ -1,6 +1,6 @@
 // 1. 导出领域与接口类型
-pub use crate::http::pagination::{PageRes, Pagination};
 pub use crate::http::response::Res;
+pub use crate::pagination::{PageRes, Pagination};
 pub use crate::types::audit_metadata::AuditMetadata;
 pub use crate::types::delete_metadata::DeleteMetadata;
 pub use crate::types::status::Status;
@@ -9,7 +9,6 @@ pub use crate::types::status::Status;
 pub use crate::error::app_error::AppError;
 
 // 3. 导出基础设施
-// pub use crate::infrastructure::configs::{AppConfig, get_config};
 // pub use crate::infrastructure::db::init_db;
 // pub use crate::infrastructure::log::init_logger;
 

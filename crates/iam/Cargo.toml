@@ -8,6 +8,10 @@ edition = "2024"
 shared = { workspace = true }
 
 # 核心框架与运行时
+# tokio = { workspace = true }
+axum = { workspace = true }
+
+# 核心框架与运行时
 async-trait = { workspace = true }
 
 # 数据库与时间
@@ -16,6 +20,10 @@ sqlx = { workspace = true }
 # 序列化与数据处理
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+# 日志
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 # 错误处理
 thiserror = { workspace = true }

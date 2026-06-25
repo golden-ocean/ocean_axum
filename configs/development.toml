@@ -1,0 +1,14 @@
+# 本地开发配置，覆盖 base.toml
+[server]
+port = 8080
+env = "development"
+
+[database]
+url = "postgres://postgres:123456@172.22.22.80:5433/ocean-axum"
+
+[logger]
+format = "text" # 本地开发需要看人类易读的彩色彩色文本
+
+[jwt]
+# 本地开发专用密钥明文（线上千万不要用这个！）
+secret = "a-string-secret-at-least-256-bits-long-for-local-dev-2026"

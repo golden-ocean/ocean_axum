@@ -1,0 +1,16 @@
+# 全局全环境 Base 默认参数
+[server]
+host = "127.0.0.1"
+
+[database]
+max_connections = 20
+min_connections = 5
+acquire_timeout_secs = 3
+
+[logger]
+level = "info"
+
+[jwt]
+issuer = "ocean-sys"
+access_token_exp_secs = 7200     # 短凭证默认2小时 (7200秒)
+refresh_token_exp_secs = 604800   # 长凭证默认7天 (604800秒)

@@ -1,0 +1,16 @@
+# 生产环境配置，覆盖 base.toml
+[server]
+port = 80
+env = "production"
+
+[database]
+# 生产集群连接串（敏感机密可在 K8s 里面用环境变量 APP__DATABASE__URL 现场覆盖它）
+url = "postgres://prod-db-cluster:5432/axum_ddd"
+
+[logger]
+level = "warn"  # 生产环境只关心警告与严重事故，防范高频 info 撑爆磁盘
+format = "json" # 🔒 生产强要求必须是标准 JSON 报文，用于 ELK / 阿里云日志无感收集
+
+[jwt]
+# 生产密钥（通常生产环境会通过系统环境变量注入最高机密，此处为文件兜底占位）
+secret = "PRODUCTION_STRICT_ROOT_SECRET_KEY_MUST_BE_OVERRIDDEN_BY_ENV_VARIABLES"
