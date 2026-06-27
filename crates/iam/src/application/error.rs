@@ -32,7 +32,8 @@ impl From<UserAppError> for AppError {
                 UserDomainError::EmailInvalid
                 | UserDomainError::EmailEmpty
                 | UserDomainError::MobileInvalid
-                | UserDomainError::MobileEmpty => AppError::Forbidden(domain_err.to_string()),
+                | UserDomainError::MobileEmpty => AppError::BadRequest(domain_err.to_string()),
+
                 UserDomainError::UserSuspended | UserDomainError::SystemResourceProtected => {
                     AppError::Forbidden(domain_err.to_string())
                 }

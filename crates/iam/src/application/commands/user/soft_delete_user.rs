@@ -1,17 +1,15 @@
-use shared::prelude::Uuid;
-
 use crate::application::error::UserAppError;
 use crate::domain::error::UserDomainError;
 use crate::domain::repository::UserRepository;
 use crate::domain::value_object::common::UserId;
 
 pub struct SoftDeleteUserCommand {
-    pub id: Uuid,
-    pub operator_id: Uuid,
+    pub id: shared::prelude::Uuid,
+    pub operator_id: shared::prelude::Uuid,
 }
 
 pub async fn handle_soft_delete_user(
-    repo: &impl UserRepository,
+    repo: &(dyn UserRepository + Send + Sync),
     cmd: SoftDeleteUserCommand,
 ) -> Result<(), UserAppError> {
     let mut user = repo
@@ -22,5 +20,6 @@ pub async fn handle_soft_delete_user(
     user.soft_delete(cmd.operator_id)?;
 
     repo.save(&user).await?;
+
     Ok(())
 }

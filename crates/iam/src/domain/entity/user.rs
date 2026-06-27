@@ -91,6 +91,27 @@ impl User {
         Ok(())
     }
 
+    pub fn update_profile(
+        &mut self,
+        new_name: String,
+        new_email: Email,
+        new_mobile: Mobile,
+        operator_id: Uuid,
+    ) -> Result<(), UserDomainError> {
+        self.verify_can_modify()?;
+
+        if self.status.is_disabled() {
+            return Err(UserDomainError::UserSuspended);
+        }
+        self.name = new_name;
+        self.email = new_email;
+        self.mobile = new_mobile;
+
+        self.audit_metadata.update(Some(operator_id));
+
+        Ok(())
+    }
+
     /// 修改密码
     pub fn change_password(
         &mut self,

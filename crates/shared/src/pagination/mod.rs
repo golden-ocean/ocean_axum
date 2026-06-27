@@ -5,33 +5,31 @@ pub struct Pagination {
     pub page_size: u64,
 }
 
-impl Default for Pagination {
-    fn default() -> Self {
+impl Pagination {
+    pub fn new(page: Option<u64>, page_size: Option<u64>) -> Self {
         Self {
-            page: 1,
-            page_size: 20,
+            page: page.unwrap_or(1).max(1),
+            page_size: page_size.unwrap_or(20).clamp(1, 100),
         }
+    }
+
+    pub fn limit(self) -> i64 {
+        self.page_size as i64
+    }
+
+    pub fn offset(self) -> i64 {
+        ((self.page - 1) * self.page_size) as i64
     }
 }
 
-impl Pagination {
-    pub fn limit(&self) -> i64 {
-        // 1. 先用 max(1) 斩断前端传 0 的恶作剧：如果传 0，强制变成 1
-        // 2. 再用 min(100) 封死黑客大宗捞数的胃口：如果传 99999，强制压回 100
-        self.page_size.max(1).min(100) as i64
-    }
-
-    pub fn offset(&self) -> i64 {
-        // 页码防自残：哪怕传 page = 0，也强制修正为 1
-        let p = self.page.max(1);
-        let size = self.page_size.max(1);
-
-        ((p - 1) * size) as i64
+impl Default for Pagination {
+    fn default() -> Self {
+        Self::new(None, None)
     }
 }
 
 /// 统一的分页响应结果封装
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct PageRes<T> {
     /// 列表数据
     pub list: Vec<T>,

@@ -43,8 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // DI Assembling
-    let iam_state_slice = iam::presentation::web::init_iam_slice(db_pool.clone());
-    let global_state = AppState::new(iam_state_slice);
+    let global_state = AppState::new(db_pool.clone());
 
     // 初始化路由
     let router_total = create_router(global_state);
