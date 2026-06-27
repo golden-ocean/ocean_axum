@@ -4,7 +4,7 @@ use shared::prelude::{DateTime, NaiveDate, Utc, Uuid};
 pub struct UserRow {
     pub id: Uuid,
     pub username: String,
-    pub emp_no: String,
+    pub staff_no: String,
     pub name: String,
     pub email: String,
     pub mobile: String,

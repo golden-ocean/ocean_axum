@@ -22,7 +22,7 @@ tower = { version = "0.5" }
 tower-http = { version = "0.7", features = ["cors", "timeout", "trace"] }
 
 # 数据库与时间
-sqlx = { version = "0.9", features = [ "runtime-tokio", "postgres","derive", "macros", "uuid", "chrono"] }
+sqlx = { version = "0.9", features = [ "runtime-tokio", "postgres", "sqlite", "derive", "macros", "uuid", "chrono"] }
 # jiff = { version = "0.2", features = ["serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v7", "serde"] }

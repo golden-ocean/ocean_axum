@@ -5,7 +5,7 @@ CREATE TABLE sys_user (
 
     -- 基础信息
     username VARCHAR(64) NOT NULL,
-    emp_no VARCHAR(64) NOT NULL,
+    staff_no VARCHAR(64) NOT NULL,
     name VARCHAR(64) NOT NULL,
     email VARCHAR(128) NOT NULL,
     mobile VARCHAR(32) NOT NULL,
@@ -40,7 +40,7 @@ CREATE TABLE sys_user (
 
 COMMENT ON TABLE sys_user IS '系统用户主表';
 COMMENT ON COLUMN sys_user.username IS '登录账号';
-COMMENT ON COLUMN sys_user.emp_no IS '员工工号';
+COMMENT ON COLUMN sys_user.staff_no IS '员工工号';
 COMMENT ON COLUMN sys_user.name IS '名字';
 COMMENT ON COLUMN sys_user.email IS '电子邮箱';
 COMMENT ON COLUMN sys_user.mobile IS '移动电话';
@@ -66,7 +66,7 @@ COMMENT ON COLUMN sys_user.deleted_at IS '删除时间';
 COMMENT ON COLUMN sys_user.deleted_by IS '删除者';
 
 CREATE UNIQUE INDEX uk_sys_user_username ON sys_user (username) WHERE deleted_at IS NULL;
-CREATE UNIQUE INDEX uk_sys_user_emp_no ON sys_user (emp_no) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX uk_sys_user_staff_no ON sys_user (staff_no) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX uk_sys_user_email ON sys_user (email) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX uk_sys_user_mobile ON sys_user (mobile) WHERE deleted_at IS NULL;
 

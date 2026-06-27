@@ -4,6 +4,8 @@ port = 8080
 env = "development"
 
 [database]
+driver = "postgres" # 或 "sqlite"
+# url = "sqlite://data.db"
 url = "postgres://postgres:123456@172.22.22.80:5433/ocean-axum"
 
 [logger]

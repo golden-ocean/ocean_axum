@@ -53,9 +53,9 @@ impl From<UserAppError> for AppError {
                     AppError::Conflict(repo_err.to_string())
                 }
 
-                UserRepoError::DataInconsistent(e) | UserRepoError::Unexpected(e) => {
-                    AppError::InternalError(anyhow::anyhow!(e))
-                }
+                UserRepoError::DataInconsistent(e)
+                | UserRepoError::Unexpected(e)
+                | UserRepoError::DatabaseError(e) => AppError::InternalError(anyhow::anyhow!(e)),
             },
             UserAppError::Unauthorized => {
                 AppError::Unauthorized("IAM_AUTH_SESSION_EXPIRED".to_string())

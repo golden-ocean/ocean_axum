@@ -2,13 +2,13 @@ use shared::prelude::{AuditMetadata, DateTime, DeleteMetadata, NaiveDate, Status
 
 use crate::domain::error::UserDomainError;
 use crate::domain::value_object::common::{OrganizationId, PositionId, RoleId, UserId};
-use crate::domain::value_object::user::{DataScope, Email, Gender, Mobile, WorkStatus};
+use crate::domain::value_object::user::{DataScope, Email, Gender, Mobile, StaffNo, WorkStatus};
 
 #[derive(Debug, Clone)]
 pub struct User {
     id: UserId,
     username: String,
-    emp_no: String,
+    staff_no: StaffNo,
     name: String,
     email: Email,
     mobile: Mobile,
@@ -41,7 +41,7 @@ impl User {
         username: String,
         password_hash: String,
         salt: String,
-        emp_no: String,
+        staff_no: StaffNo,
         name: String,
         email: Email,
         mobile: Mobile,
@@ -52,7 +52,7 @@ impl User {
         Self {
             id: UserId::new(),
             username,
-            emp_no,
+            staff_no,
             name,
             email,
             mobile,
@@ -199,7 +199,7 @@ impl User {
         password_hash: String,
         salt: String,
         password_updated_at: DateTime<Utc>,
-        emp_no: String,
+        staff_no: StaffNo,
         name: String,
         email: Email,
         mobile: Mobile,
@@ -224,7 +224,7 @@ impl User {
             password_hash,
             salt,
             password_updated_at,
-            emp_no,
+            staff_no,
             name,
             email,
             mobile,
@@ -251,8 +251,8 @@ impl User {
     pub fn username(&self) -> &str {
         &self.username
     }
-    pub fn emp_no(&self) -> &str {
-        &self.emp_no
+    pub fn staff_no(&self) -> &StaffNo {
+        &self.staff_no
     }
     pub fn name(&self) -> &str {
         &self.name

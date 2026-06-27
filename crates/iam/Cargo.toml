@@ -16,6 +16,7 @@ async-trait = { workspace = true }
 
 # 数据库与时间
 sqlx = { workspace = true }
+chrono = { workspace = true }
 
 # 序列化与数据处理
 serde = { workspace = true }
@@ -32,7 +33,3 @@ anyhow = { workspace = true }
 # 字段验证
 validator = { workspace = true }
 regex = { workspace = true }
-
-[features]
-default = []
-export-i18n = []

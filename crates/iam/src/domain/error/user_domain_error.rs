@@ -19,6 +19,13 @@ pub enum UserDomainError {
     #[error("IAM_USER_MOBILE_ALREADY_EXISTS")]
     MobileAlreadyExists,
 
+    #[error("IAM_USER_STAFF_NO_INVALID_FORMAT")]
+    StaffNoInvalid,
+    #[error("IAM_USER_STAFF_NO_CANNOT_BE_EMPTY")]
+    StaffNoEmpty,
+    #[error("IAM_USER_STAFF_NO_ALREADY_EXISTS")]
+    StaffNoAlreadyExists,
+
     #[error("IAM_USER_ACCOUNT_SUSPENDED")]
     UserSuspended,
     #[error("IAM_USER_USER_NOT_FOUND")]

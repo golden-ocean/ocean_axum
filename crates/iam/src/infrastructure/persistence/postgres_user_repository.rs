@@ -1,7 +1,6 @@
-use std::collections::HashSet;
-
 use async_trait::async_trait;
-use sqlx::{Pool, Postgres};
+use sqlx::{Postgres, Transaction};
+use std::collections::HashSet;
 
 use shared::prelude::Uuid;
 
@@ -9,17 +8,18 @@ use crate::domain::entity::User;
 use crate::domain::repository::UserRepository;
 use crate::domain::repository::error::UserRepoError;
 use crate::domain::value_object::common::{RoleId, UserId};
+use crate::domain::value_object::user::{Email, Mobile, StaffNo};
 use crate::infrastructure::persistence::mapper::UserMapper;
 use crate::infrastructure::persistence::model::UserRow;
 
 /// 基于 PostgreSQL 的用户数据仓储实现适配器
-pub struct PostgresUserRepository {
-    pool: Pool<Postgres>,
+pub struct PostgresUserRepository<'a> {
+    pub tx: &'a mut Transaction<'static, Postgres>,
 }
 
-impl PostgresUserRepository {
-    pub fn new(pool: Pool<Postgres>) -> Self {
-        Self { pool }
+impl<'a> PostgresUserRepository<'a> {
+    pub fn new(tx: &'a mut Transaction<'static, Postgres>) -> Self {
+        Self { tx }
     }
 
     fn map_sqlx_error(e: sqlx::Error) -> UserRepoError {
@@ -37,19 +37,18 @@ impl PostgresUserRepository {
         UserRepoError::Unexpected(e.to_string())
     }
 
-    async fn assemble_user(&self, row: UserRow) -> Result<User, UserRepoError> {
+    async fn assemble_user(&mut self, row: UserRow) -> Result<User, UserRepoError> {
         let user_id = row.id;
 
         // 从中间关系表获取该用户当前拥建立多对多的角色 ID 集合
         let db_roles: Vec<Uuid> =
             sqlx::query_scalar("SELECT role_id FROM sys_user_role WHERE user_id = $1")
                 .bind(user_id)
-                .fetch_all(&self.pool)
+                .fetch_all(&mut **self.tx)
                 .await
                 .map_err(Self::map_sqlx_error)?;
 
         let role_ids: Vec<RoleId> = db_roles.into_iter().map(RoleId::from).collect();
-
         let user = UserMapper::to_entity(row, role_ids)?;
 
         Ok(user)
@@ -57,19 +56,16 @@ impl PostgresUserRepository {
 }
 
 #[async_trait]
-impl UserRepository for PostgresUserRepository {
+impl<'a> UserRepository for PostgresUserRepository<'a> {
     /// 统一保存行为 (Upsert - 整体替换并持久化聚合根不变量)
-    async fn save(&self, user: &User) -> Result<(), UserRepoError> {
+    async fn save(&mut self, user: &User) -> Result<(), UserRepoError> {
         let row = UserMapper::to_row(user);
-
-        // 开启数据库事务，确保主表和关联关系多表更新满足 ACID 特性
-        let mut tx = self.pool.begin().await.map_err(Self::map_sqlx_error)?;
 
         // 1. 全量 Upsert 写入主表 sys_user
         sqlx::query!(
             r#"
             INSERT INTO sys_user (
-                id, username, emp_no, name, email, mobile, gender, birthday, avatar,
+                id, username, staff_no, name, email, mobile, gender, birthday, avatar,
                 password_hash, salt, password_updated_at, work_status, data_scope,
                 is_builtin, sort, remark, status,
                 organization_id, position_id,
@@ -81,7 +77,7 @@ impl UserRepository for PostgresUserRepository {
             )
             ON CONFLICT (id) DO UPDATE SET
                 username = EXCLUDED.username,
-                emp_no = EXCLUDED.emp_no,
+                staff_no = EXCLUDED.staff_no,
                 name = EXCLUDED.name,
                 email = EXCLUDED.email,
                 mobile = EXCLUDED.mobile,
@@ -106,7 +102,7 @@ impl UserRepository for PostgresUserRepository {
             "#,
             row.id,
             row.username,
-            row.emp_no,
+            row.staff_no,
             row.name,
             row.email,
             row.mobile,
@@ -131,7 +127,7 @@ impl UserRepository for PostgresUserRepository {
             row.deleted_at,
             row.deleted_by
         )
-        .execute(&mut *tx)
+        .execute(&mut **self.tx)
         .await
         .map_err(Self::map_sqlx_error)?;
 
@@ -140,7 +136,7 @@ impl UserRepository for PostgresUserRepository {
             "SELECT role_id FROM sys_user_role WHERE user_id = $1",
             row.id
         )
-        .fetch_all(&mut *tx)
+        .fetch_all(&mut **self.tx)
         .await
         .map_err(Self::map_sqlx_error)?;
 
@@ -164,7 +160,7 @@ impl UserRepository for PostgresUserRepository {
                 row.id,
                 &roles_to_delete
             )
-            .execute(&mut *tx)
+            .execute(&mut **self.tx) // 🌟 统一对齐：通过双星号穿透
             .await
             .map_err(Self::map_sqlx_error)?;
         }
@@ -178,45 +174,40 @@ impl UserRepository for PostgresUserRepository {
                 row.id,
                 &roles_to_insert
             )
-            .execute(&mut *tx)
+            .execute(&mut **self.tx) // 🌟 统一对齐：通过双星号穿透
             .await
             .map_err(Self::map_sqlx_error)?;
         }
 
-        // 提交事务
-        tx.commit().await.map_err(Self::map_sqlx_error)?;
         Ok(())
     }
 
-    /// 级联物理删除
-    async fn remove(&self, user_id: &UserId) -> Result<(), UserRepoError> {
-        let mut tx = self.pool.begin().await.map_err(Self::map_sqlx_error)?;
-
+    /// 级联物理删除 (连带删除 用户-角色 关系)
+    async fn remove(&mut self, user_id: &UserId) -> Result<(), UserRepoError> {
         sqlx::query!(
             "DELETE FROM sys_user_role WHERE user_id = $1",
             user_id.value()
         )
-        .execute(&mut *tx)
+        .execute(&mut **self.tx)
         .await
         .map_err(Self::map_sqlx_error)?;
 
         sqlx::query!("DELETE FROM sys_user WHERE id = $1", user_id.value())
-            .execute(&mut *tx)
+            .execute(&mut **self.tx)
             .await
             .map_err(Self::map_sqlx_error)?;
 
-        tx.commit().await.map_err(Self::map_sqlx_error)?;
         Ok(())
     }
 
     /// 通过 ID 查找用户
-    async fn find_by_id(&self, user_id: &UserId) -> Result<Option<User>, UserRepoError> {
+    async fn find_by_id(&mut self, user_id: &UserId) -> Result<Option<User>, UserRepoError> {
         let row_opt = sqlx::query_as!(
             UserRow,
             "SELECT * FROM sys_user WHERE id = $1 AND deleted_at IS NULL",
             user_id.value()
         )
-        .fetch_optional(&self.pool)
+        .fetch_optional(&mut **self.tx)
         .await
         .map_err(Self::map_sqlx_error)?;
 
@@ -229,14 +220,14 @@ impl UserRepository for PostgresUserRepository {
         }
     }
 
-    /// 通过用户名检索用户
-    async fn find_by_username(&self, username: &str) -> Result<Option<User>, UserRepoError> {
+    /// 通过强类型 Username 值对象检索用户
+    async fn find_by_username(&mut self, username: &str) -> Result<Option<User>, UserRepoError> {
         let row_opt = sqlx::query_as!(
             UserRow,
             "SELECT * FROM sys_user WHERE username = $1 AND deleted_at IS NULL",
             username
         )
-        .fetch_optional(&self.pool)
+        .fetch_optional(&mut **self.tx)
         .await
         .map_err(Self::map_sqlx_error)?;
 
@@ -250,13 +241,13 @@ impl UserRepository for PostgresUserRepository {
     }
 
     /// 通过手机号检索用户
-    async fn find_by_mobile(&self, mobile: &str) -> Result<Option<User>, UserRepoError> {
+    async fn find_by_mobile(&mut self, mobile: &Mobile) -> Result<Option<User>, UserRepoError> {
         let row_opt = sqlx::query_as!(
             UserRow,
             "SELECT * FROM sys_user WHERE mobile = $1 AND deleted_at IS NULL",
-            mobile
+            mobile.as_str()
         )
-        .fetch_optional(&self.pool)
+        .fetch_optional(&mut **self.tx)
         .await
         .map_err(Self::map_sqlx_error)?;
 
@@ -270,13 +261,13 @@ impl UserRepository for PostgresUserRepository {
     }
 
     /// 通过邮箱检索用户
-    async fn find_by_email(&self, email: &str) -> Result<Option<User>, UserRepoError> {
+    async fn find_by_email(&mut self, email: &Email) -> Result<Option<User>, UserRepoError> {
         let row_opt = sqlx::query_as!(
             UserRow,
             "SELECT * FROM sys_user WHERE email = $1 AND deleted_at IS NULL",
-            email
+            email.as_str()
         )
-        .fetch_optional(&self.pool)
+        .fetch_optional(&mut **self.tx)
         .await
         .map_err(Self::map_sqlx_error)?;
 
@@ -289,42 +280,74 @@ impl UserRepository for PostgresUserRepository {
         }
     }
 
-    /// username 唯一性
-    async fn exists_by_username(&self, username: &str) -> Result<bool, UserRepoError> {
+    /// username 唯一性检查
+    async fn exists_by_username(&mut self, username: &str) -> Result<bool, UserRepoError> {
         let exists = sqlx::query_scalar!(
                 r#"SELECT EXISTS(SELECT 1 FROM sys_user WHERE username = $1 AND deleted_at IS NULL) as "exists!""#,
                 username
             )
-            .fetch_one(&self.pool)
+            .fetch_one(&mut **self.tx)
             .await
             .map_err(Self::map_sqlx_error)?;
 
         Ok(exists)
     }
 
-    /// email 唯一性
-    async fn exists_by_email(&self, email: &str) -> Result<bool, UserRepoError> {
+    /// email 唯一性检查
+    async fn exists_by_email(&mut self, email: &Email) -> Result<bool, UserRepoError> {
         let exists = sqlx::query_scalar!(
                 r#"SELECT EXISTS(SELECT 1 FROM sys_user WHERE email = $1 AND deleted_at IS NULL) as "exists!""#,
-                email
+                email.as_str()
             )
-            .fetch_one(&self.pool)
+            .fetch_one(&mut **self.tx)
             .await
             .map_err(Self::map_sqlx_error)?;
 
         Ok(exists)
     }
 
-    /// mobile 唯一性
-    async fn exists_by_mobile(&self, mobile: &str) -> Result<bool, UserRepoError> {
+    /// mobile 唯一性检查
+    async fn exists_by_mobile(&mut self, mobile: &Mobile) -> Result<bool, UserRepoError> {
         let exists = sqlx::query_scalar!(
                 r#"SELECT EXISTS(SELECT 1 FROM sys_user WHERE mobile = $1 AND deleted_at IS NULL) as "exists!""#,
-                mobile
+                mobile.as_str()
             )
-            .fetch_one(&self.pool)
+            .fetch_one(&mut **self.tx)
             .await
             .map_err(Self::map_sqlx_error)?;
 
         Ok(exists)
+    }
+
+    /// 自增工号累计生成
+    async fn get_next_staff_no(&mut self) -> Result<StaffNo, UserRepoError> {
+        // 全局按工号倒序，施加悲观锁 FOR UPDATE。
+        let max_staff_no_opt: Option<String> = sqlx::query_scalar!(
+            r#"
+            SELECT staff_no FROM sys_user
+            WHERE deleted_at IS NULL
+            ORDER BY staff_no DESC
+            LIMIT 1
+            FOR UPDATE
+            "#
+        )
+        .fetch_optional(&mut **self.tx)
+        .await
+        .map_err(Self::map_sqlx_error)?;
+
+        // 安全计算下一个全局计数
+        let next_seq = match max_staff_no_opt {
+            Some(max_no) => {
+                if let Some(last_dash_idx) = max_no.rfind('-') {
+                    max_no[last_dash_idx + 1..].parse::<i32>().unwrap_or(0) + 1
+                } else {
+                    1
+                }
+            }
+            None => 1, // 库中开天辟地第一条记录
+        };
+
+        // 完美组装返回：STAFF-000001 强类型值对象
+        Ok(StaffNo::reconstitute(format!("STAFF-{:06}", next_seq)))
     }
 }

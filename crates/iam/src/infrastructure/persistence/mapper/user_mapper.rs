@@ -3,13 +3,16 @@ use shared::prelude::{AuditMetadata, DeleteMetadata, Status};
 use crate::domain::entity::user::User;
 use crate::domain::repository::error::UserRepoError;
 use crate::domain::value_object::common::{OrganizationId, PositionId, RoleId, UserId};
-use crate::domain::value_object::user::{DataScope, Email, Gender, Mobile, WorkStatus};
+use crate::domain::value_object::user::{DataScope, Email, Gender, Mobile, StaffNo, WorkStatus};
 use crate::infrastructure::persistence::model::UserRow;
 
 pub struct UserMapper;
 
 impl UserMapper {
     pub fn to_entity(row: UserRow, role_ids: Vec<RoleId>) -> Result<User, UserRepoError> {
+        let staff_no = StaffNo::new(row.staff_no).map_err(|e| {
+            UserRepoError::DataInconsistent(format!("数据库中的员工工号格式已损毁: {:?}", e))
+        })?;
         let email = Email::new(row.email).map_err(|e| {
             UserRepoError::DataInconsistent(format!("数据库中的邮箱格式已损毁: {:?}", e))
         })?;
@@ -47,7 +50,7 @@ impl UserMapper {
             row.password_hash,
             row.salt,
             row.password_updated_at,
-            row.emp_no,
+            staff_no,
             row.name,
             email,
             mobile,
@@ -72,7 +75,7 @@ impl UserMapper {
         UserRow {
             id: entity.id().value(),
             username: entity.username().to_string(),
-            emp_no: entity.emp_no().to_string(),
+            staff_no: entity.staff_no().to_string(),
             name: entity.name().to_string(),
             email: entity.email().as_str().to_string(),
             mobile: entity.mobile().as_str().to_string(),

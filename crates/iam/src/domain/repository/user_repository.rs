@@ -3,29 +3,21 @@ use async_trait::async_trait;
 use crate::domain::entity::User;
 use crate::domain::repository::error::UserRepoError;
 use crate::domain::value_object::common::UserId;
+use crate::domain::value_object::user::{Email, Mobile, StaffNo};
 
 #[async_trait]
 pub trait UserRepository: Send + Sync {
-    /// Upsert
-    async fn save(&self, user: &User) -> Result<(), UserRepoError>;
+    async fn save(&mut self, user: &User) -> Result<(), UserRepoError>;
+    async fn remove(&mut self, user_id: &UserId) -> Result<(), UserRepoError>;
 
-    /// 通过 ID 删除 物理删除
-    async fn remove(&self, user_id: &UserId) -> Result<(), UserRepoError>;
+    async fn find_by_id(&mut self, user_id: &UserId) -> Result<Option<User>, UserRepoError>;
+    async fn find_by_username(&mut self, username: &str) -> Result<Option<User>, UserRepoError>;
+    async fn find_by_email(&mut self, email: &Email) -> Result<Option<User>, UserRepoError>;
+    async fn find_by_mobile(&mut self, mobile: &Mobile) -> Result<Option<User>, UserRepoError>;
 
-    /// 通过 ID 查找用户
-    async fn find_by_id(&self, user_id: &UserId) -> Result<Option<User>, UserRepoError>;
+    async fn exists_by_username(&mut self, username: &str) -> Result<bool, UserRepoError>;
+    async fn exists_by_email(&mut self, email: &Email) -> Result<bool, UserRepoError>;
+    async fn exists_by_mobile(&mut self, mobile: &Mobile) -> Result<bool, UserRepoError>;
 
-    /// 通过用户名查找用户 (登录时常用)
-    async fn find_by_username(&self, username: &str) -> Result<Option<User>, UserRepoError>;
-
-    /// 通过手机号查找用户
-    async fn find_by_mobile(&self, mobile: &str) -> Result<Option<User>, UserRepoError>;
-
-    /// 通过邮箱查找用户
-    async fn find_by_email(&self, email: &str) -> Result<Option<User>, UserRepoError>;
-
-    /// 查找唯一性冲突
-    async fn exists_by_username(&self, username: &str) -> Result<bool, UserRepoError>;
-    async fn exists_by_email(&self, email: &str) -> Result<bool, UserRepoError>;
-    async fn exists_by_mobile(&self, mobile: &str) -> Result<bool, UserRepoError>;
+    async fn get_next_staff_no(&mut self) -> Result<StaffNo, UserRepoError>;
 }

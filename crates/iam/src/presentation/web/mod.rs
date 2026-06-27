@@ -8,7 +8,8 @@ use sqlx::PgPool;
 use std::sync::Arc;
 
 use crate::{
-    domain::repository::UserRepository, infrastructure::persistence::PostgresUserRepository,
+    domain::repository::UnitOfWorkManager,
+    infrastructure::persistence::postgres_uow::PostgresUnitOfWorkManager,
 };
 
 #[derive(Clone)]
@@ -18,19 +19,7 @@ pub struct IamQueryState {
 
 #[derive(Clone)]
 pub struct IamCommandState {
-    pub user_repo: Arc<dyn UserRepository>,
-}
-
-pub fn init_iam_query_state(pool: PgPool) -> IamQueryState {
-    IamQueryState {
-        reader_pool: pool.clone(),
-    }
-}
-
-pub fn init_iam_command_state(pool: PgPool) -> IamCommandState {
-    IamCommandState {
-        user_repo: Arc::new(PostgresUserRepository::new(pool.clone())),
-    }
+    pub uow_manager: Arc<dyn UnitOfWorkManager>,
 }
 
 /// 模块内部路由表
@@ -39,8 +28,9 @@ pub fn iam_router(pool: PgPool) -> Router {
         reader_pool: pool.clone(),
     };
     let command_state = IamCommandState {
-        user_repo: Arc::new(PostgresUserRepository::new(pool)),
+        uow_manager: Arc::new(PostgresUnitOfWorkManager::new(pool)),
     };
+
     let query_routes = Router::new()
         .route("/users", get(user_handler::get_user_page))
         .with_state(query_state);

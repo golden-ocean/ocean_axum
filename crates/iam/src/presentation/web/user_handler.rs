@@ -89,13 +89,17 @@ pub async fn get_user_page(
 // =========================================================================
 // Create 用户创建 (Create User)
 // =========================================================================
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 pub struct CreateUserReq {
+    #[validate(length(min = 1, max = 50, message = "用户名长度必须在 1-50 之间"))]
     pub username: String,
+    #[validate(length(min = 6, max = 100, message = "密码长度必须在 6-100 之间"))]
     pub password: String,
-    pub emp_no: String,
+    #[validate(length(min = 1, max = 50, message = "姓名长度必须在 1-50 之间"))]
     pub name: String,
+    #[validate(email(message = "邮箱格式不正确"))]
     pub email: String,
+    #[validate(length(min = 11, max = 11, message = "手机号必须是 11 位"))]
     pub mobile: String,
     pub organization_id: Option<Uuid>,
 }
@@ -111,6 +115,9 @@ pub async fn create_user(
     // info_extractor: Extension<CurrentOperator>,
     Json(req): Json<CreateUserReq>,
 ) -> Result<Json<CreateUserRes>, AppError> {
+    req.validate()
+        .map_err(|e| AppError::BadRequest(e.to_string()))?;
+
     let (computed_hash, generated_salt) = crypto::hash_password(&req.password)
         .map_err(|_| AppError::InternalError(anyhow::anyhow!("CRYPTO_ENGINE_FAULT")))?;
 
@@ -120,7 +127,6 @@ pub async fn create_user(
         username: req.username,
         password_hash: computed_hash,
         salt: generated_salt,
-        emp_no: req.emp_no,
         name: req.name,
         email: req.email,
         mobile: req.mobile,
@@ -128,7 +134,7 @@ pub async fn create_user(
         operator_id: current_operator_id,
     };
 
-    let new_user_id = handle_create_user(&*state.user_repo, command)
+    let new_user_id = handle_create_user(&*state.uow_manager, command)
         .await
         .map_err(AppError::from)?;
 
@@ -172,7 +178,7 @@ pub async fn update_user(
         operator_id: current_operator_id,
     };
 
-    handle_update_user(&*state.user_repo, command)
+    handle_update_user(&*state.uow_manager, command)
         .await
         .map_err(AppError::from)?;
 
@@ -194,7 +200,7 @@ pub async fn delete_user(
         operator_id: current_operator_id,
     };
 
-    handle_soft_delete_user(&*state.user_repo, command)
+    handle_soft_delete_user(&*state.uow_manager, command)
         .await
         .map_err(AppError::from)?;
 

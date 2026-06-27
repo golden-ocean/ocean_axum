@@ -2,7 +2,6 @@
 pub enum UserRepoError {
     #[error("IAM_USER_NOT_FOUND")]
     NotFound,
-
     // --- 用户特有的冲突字段平铺 ---
     #[error("IAM_USER_USERNAME_ALREADY_EXISTS")]
     UsernameConflict,
@@ -19,4 +18,6 @@ pub enum UserRepoError {
     UnknownConflict(String),
     #[error("IAM_USER_INTERNAL_SYSTEM_ERROR:{0}")]
     Unexpected(String),
+    #[error("IAM_USER_DATABASE_ERROR:{0}")]
+    DatabaseError(String),
 }
