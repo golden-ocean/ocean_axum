@@ -1,4 +1,4 @@
-use crate::application::error::UserAppError;
+use crate::application::error::IamAppError;
 use crate::domain::error::UserDomainError;
 use crate::domain::repository::UnitOfWorkManager;
 use crate::domain::value_object::common::UserId;
@@ -15,7 +15,7 @@ pub struct UpdateUserCommand {
 pub async fn handle_update_user(
     uow_manager: &(dyn UnitOfWorkManager + Send + Sync),
     cmd: UpdateUserCommand,
-) -> Result<(), UserAppError> {
+) -> Result<(), IamAppError> {
     let target_email = crate::domain::value_object::user::Email::new(cmd.email)?;
     let target_mobile = crate::domain::value_object::user::Mobile::new(cmd.mobile)?;
 

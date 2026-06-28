@@ -14,7 +14,7 @@ fn get_trace_id() -> Option<String> {
     None
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Res<T> {
     pub success: bool,
@@ -78,11 +78,5 @@ impl Res<()> {
             host: get_hostname(),
             timestamp: chrono::Utc::now().timestamp_millis(),
         }
-    }
-}
-
-impl<T: serde::Serialize> axum::response::IntoResponse for Res<T> {
-    fn into_response(self) -> axum::response::Response {
-        axum::Json(self).into_response()
     }
 }

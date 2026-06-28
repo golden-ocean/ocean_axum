@@ -19,15 +19,15 @@ impl Status {
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Enabled => "Enabled",
-            Self::Disabled => "Disabled",
+            Self::Enabled => "enabled",
+            Self::Disabled => "disabled",
         }
     }
 
     pub fn from_str(s: &str) -> Option<Self> {
-        match s.trim() {
-            "Enabled" | "enabled" => Some(Self::Enabled),
-            "Disabled" | "disabled" => Some(Self::Disabled),
+        match s.trim().to_ascii_lowercase().as_str() {
+            "enabled" => Some(Self::Enabled),
+            "disabled" => Some(Self::Disabled),
             _ => None,
         }
     }

@@ -1,10 +1,12 @@
-use axum::{Router, http::StatusCode, routing::get};
 use std::time::Duration;
+
+use axum::{Json, Router, http::StatusCode, routing::get};
 use tower_http::{cors::CorsLayer, timeout::TimeoutLayer, trace::TraceLayer};
 
-use iam::presentation::web::iam_router;
+use iam::presentation::web::router::iam_router;
+use utoipa::OpenApi;
 
-use crate::state::AppState;
+use crate::{openapi::ApiDoc, state::AppState};
 
 pub fn create_router(global_state: AppState) -> Router {
     let cors = CorsLayer::permissive();
@@ -13,6 +15,10 @@ pub fn create_router(global_state: AppState) -> Router {
 
     Router::new()
         .route("/health", get(|| async { "OK" }))
+        .route(
+            "/api-docs/openapi.json",
+            get(|| async { Json(ApiDoc::openapi()) }),
+        )
         .nest("/api/v1/iam", iam_router(global_state.pool.clone()))
         .layer(timeout)
         .layer(cors)

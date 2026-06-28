@@ -29,8 +29,8 @@ impl Default for Pagination {
 }
 
 /// 统一的分页响应结果封装
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct PageRes<T> {
+#[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
+pub struct Page<T> {
     /// 列表数据
     pub list: Vec<T>,
     /// 总记录数
@@ -43,7 +43,7 @@ pub struct PageRes<T> {
     pub total_pages: u64,
 }
 
-impl<T> PageRes<T> {
+impl<T> Page<T> {
     pub fn new(total: u64, page: u64, page_size: u64, list: Vec<T>) -> Self {
         let total_pages = if page_size == 0 {
             0
@@ -60,11 +60,11 @@ impl<T> PageRes<T> {
     }
 
     /// 利用泛型映射，在表现层实现流水线式的 Dto 转换
-    pub fn map<F, U>(self, f: F) -> PageRes<U>
+    pub fn map<F, U>(self, f: F) -> Page<U>
     where
         F: FnMut(T) -> U,
     {
-        PageRes {
+        Page {
             list: self.list.into_iter().map(f).collect(),
             total: self.total,
             page: self.page,

@@ -1,38 +1,74 @@
+use strum::{EnumDiscriminants, EnumString};
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+use shared::error::AppError;
+
+#[derive(Debug, Error, EnumDiscriminants)]
+#[strum_discriminants(name(UserDomainErrorCode))]
+#[strum_discriminants(derive(EnumString, strum::Display))]
+#[strum_discriminants(strum(serialize_all = "SCREAMING_SNAKE_CASE"))]
 pub enum UserDomainError {
-    #[error("IAM_USER_USERNAME_ALREADY_EXISTS")]
+    #[error("用户名已存在")]
     UsernameAlreadyExists,
 
-    #[error("IAM_USER_EMAIL_INVALID_FORMAT")]
+    #[error("邮箱格式无效")]
     EmailInvalid,
-    #[error("IAM_USER_EMAIL_CANNOT_BE_EMPTY")]
+    #[error("邮箱不能为空")]
     EmailEmpty,
-    #[error("IAM_USER_EMAIL_ALREADY_EXISTS")]
+    #[error("邮箱已存在")]
     EmailAlreadyExists,
 
-    #[error("IAM_USER_MOBILE_INVALID_FORMAT")]
+    #[error("手机号格式无效")]
     MobileInvalid,
-    #[error("IAM_USER_MOBILE_CANNOT_BE_EMPTY")]
+    #[error("手机号不能为空")]
     MobileEmpty,
-    #[error("IAM_USER_MOBILE_ALREADY_EXISTS")]
+    #[error("手机号已存在")]
     MobileAlreadyExists,
 
-    #[error("IAM_USER_STAFF_NO_INVALID_FORMAT")]
+    #[error("工号格式无效")]
     StaffNoInvalid,
-    #[error("IAM_USER_STAFF_NO_CANNOT_BE_EMPTY")]
+    #[error("工号不能为空")]
     StaffNoEmpty,
-    #[error("IAM_USER_STAFF_NO_ALREADY_EXISTS")]
+    #[error("工号已存在")]
     StaffNoAlreadyExists,
 
-    #[error("IAM_USER_ACCOUNT_SUSPENDED")]
+    #[error("账户已被停用")]
     UserSuspended,
-    #[error("IAM_USER_USER_NOT_FOUND")]
+    #[error("用户不存在")]
     UserNotFound,
 
-    #[error("IAM_SUSER_YSTEM_RESOURCE_PROTECTED")]
+    #[error("系统内置资源受保护")]
     SystemResourceProtected,
-    #[error("IAM_USER_INVALID_FIELDS: {0}")]
+    #[error("字段校验失败: {0}")]
     InvalidFields(String),
+}
+
+impl UserDomainError {
+    pub fn code(&self) -> String {
+        format!("IAM_USER_DOMAIN_{}", UserDomainErrorCode::from(self))
+    }
+}
+
+impl From<UserDomainError> for AppError {
+    fn from(e: UserDomainError) -> Self {
+        let code = e.code();
+        let msg = e.to_string();
+        match UserDomainErrorCode::from(&e) {
+            UserDomainErrorCode::UserNotFound => AppError::not_found(code, msg),
+
+            UserDomainErrorCode::UsernameAlreadyExists
+            | UserDomainErrorCode::EmailAlreadyExists
+            | UserDomainErrorCode::MobileAlreadyExists
+            | UserDomainErrorCode::StaffNoAlreadyExists => AppError::conflict(code, msg),
+
+            UserDomainErrorCode::EmailEmpty
+            | UserDomainErrorCode::MobileEmpty
+            | UserDomainErrorCode::StaffNoEmpty
+            | UserDomainErrorCode::EmailInvalid
+            | UserDomainErrorCode::MobileInvalid
+            | UserDomainErrorCode::StaffNoInvalid => AppError::bad_request(code, msg),
+
+            _ => AppError::bad_request(code, msg),
+        }
+    }
 }

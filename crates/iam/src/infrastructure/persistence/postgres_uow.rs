@@ -48,7 +48,6 @@ impl UnitOfWork for PostgresUnitOfWork {
     }
 
     async fn commit(self: Box<Self>) -> Result<(), UserRepoError> {
-        // 解包 Box 消费 self，原子提交大事务
         self.tx
             .commit()
             .await

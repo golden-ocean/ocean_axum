@@ -29,8 +29,8 @@ impl<'a> PostgresUserRepository<'a> {
                 return match constraint {
                     "uk_sys_user_username" => UserRepoError::UsernameConflict,
                     "uk_sys_user_email" => UserRepoError::EmailConflict,
-                    "uk_sys_user_mobile" => UserRepoError::PhoneConflict,
-                    _ => UserRepoError::UnknownConflict(constraint.to_string()),
+                    "uk_sys_user_mobile" => UserRepoError::MobileConflict,
+                    _ => UserRepoError::UnknownConstraintViolation(constraint.to_string()),
                 };
             }
         }

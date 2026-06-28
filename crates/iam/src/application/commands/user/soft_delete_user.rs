@@ -1,4 +1,4 @@
-use crate::application::error::UserAppError;
+use crate::application::error::IamAppError;
 use crate::domain::error::UserDomainError;
 use crate::domain::repository::UnitOfWorkManager;
 use crate::domain::value_object::common::UserId;
@@ -11,7 +11,7 @@ pub struct SoftDeleteUserCommand {
 pub async fn handle_soft_delete_user(
     uow_manager: &(dyn UnitOfWorkManager + Send + Sync),
     cmd: SoftDeleteUserCommand,
-) -> Result<(), UserAppError> {
+) -> Result<(), IamAppError> {
     let mut uow = uow_manager.start_work().await?;
     let mut user = uow
         .user_repo()

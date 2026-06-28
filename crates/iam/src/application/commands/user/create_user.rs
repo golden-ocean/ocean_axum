@@ -1,6 +1,6 @@
 use shared::prelude::Uuid;
 
-use crate::application::error::UserAppError;
+use crate::application::error::IamAppError;
 use crate::domain::entity::User;
 use crate::domain::error::UserDomainError;
 use crate::domain::repository::UnitOfWorkManager;
@@ -21,7 +21,7 @@ pub struct CreateUserCommand {
 pub async fn handle_create_user(
     uow_manager: &(dyn UnitOfWorkManager + Send + Sync),
     cmd: CreateUserCommand,
-) -> Result<Uuid, UserAppError> {
+) -> Result<Uuid, IamAppError> {
     let email_vo = Email::new(cmd.email)?;
     let mobile_vo = Mobile::new(cmd.mobile)?;
     let org_id_vo = cmd.organization_id.map(OrganizationId::from);

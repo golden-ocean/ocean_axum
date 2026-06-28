@@ -1,6 +1,7 @@
-use crate::{application::error::UserAppError, domain::repository::error::UserRepoError};
-use shared::pagination::Pagination;
+use shared::prelude::Pagination;
 use sqlx::PgPool;
+
+use crate::{application::error::IamAppError, domain::repository::error::UserRepoError};
 
 pub struct UserPageQuery {
     pub username: Option<String>,
@@ -22,7 +23,7 @@ pub struct UserPageItem {
 pub async fn handle_get_user_page(
     pool: &PgPool,
     query: &UserPageQuery,
-) -> Result<(Vec<UserPageItem>, i64), UserAppError> {
+) -> Result<(Vec<UserPageItem>, i64), IamAppError> {
     let limit = query.pagination.limit();
     let offset = query.pagination.offset();
 

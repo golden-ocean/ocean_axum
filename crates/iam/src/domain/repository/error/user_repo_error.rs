@@ -1,23 +1,56 @@
-#[derive(Debug, thiserror::Error)]
+use shared::error::AppError;
+use strum::{EnumDiscriminants, EnumString};
+use thiserror::Error;
+
+#[derive(Debug, Error, EnumDiscriminants)]
+#[strum_discriminants(name(UserRepoErrorCode))]
+#[strum_discriminants(derive(EnumString, strum::Display))]
+#[strum_discriminants(strum(serialize_all = "SCREAMING_SNAKE_CASE"))]
 pub enum UserRepoError {
-    #[error("IAM_USER_NOT_FOUND")]
+    #[error("用户记录未找到")]
     NotFound,
-    // --- 用户特有的冲突字段平铺 ---
-    #[error("IAM_USER_USERNAME_ALREADY_EXISTS")]
+
+    #[error("用户名冲突")]
     UsernameConflict,
-    #[error("IAM_USER_EMAIL_ALREADY_EXISTS")]
+    #[error("邮箱冲突")]
     EmailConflict,
-    #[error("IAM_USER_MOBILE_ALREADY_EXISTS")]
-    PhoneConflict,
-    // --- 兜底与公共错误 ---
-    #[error("IAM_USER_DATA_INCONSISTENT:{0}")]
+    #[error("手机号冲突")]
+    MobileConflict,
+
+    #[error("数据不一致: {0}")]
     DataInconsistent(String),
-    #[error("IAM_USER_CONCURRENCY_CONFLICT:{0}")]
+    #[error("并发冲突: {0}")]
     ConcurrencyConflict(String),
-    #[error("IAM_USER_UNKNOWN_CONSTRAINT_VIOLATION:{0}")]
-    UnknownConflict(String),
-    #[error("IAM_USER_INTERNAL_SYSTEM_ERROR:{0}")]
+    #[error("未知约束违反: {0}")]
+    UnknownConstraintViolation(String),
+
+    #[error("非预期错误: {0}")]
     Unexpected(String),
-    #[error("IAM_USER_DATABASE_ERROR:{0}")]
+    #[error("数据库错误: {0}")]
     DatabaseError(String),
+}
+
+impl UserRepoError {
+    pub fn code(&self) -> String {
+        format!("IAM_USER_REPO_{}", UserRepoErrorCode::from(self))
+    }
+}
+
+impl From<UserRepoError> for AppError {
+    fn from(e: UserRepoError) -> Self {
+        let code = e.code();
+        let msg = e.to_string();
+        match UserRepoErrorCode::from(&e) {
+            UserRepoErrorCode::NotFound => AppError::not_found(code, msg),
+
+            UserRepoErrorCode::UsernameConflict
+            | UserRepoErrorCode::EmailConflict
+            | UserRepoErrorCode::MobileConflict => AppError::conflict(code, msg),
+
+            UserRepoErrorCode::DatabaseError | UserRepoErrorCode::Unexpected => {
+                AppError::InternalError(anyhow::anyhow!(e))
+            }
+            _ => AppError::bad_request(code, msg),
+        }
+    }
 }

@@ -4,16 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-# 核心框架与运行时
-tokio = { workspace = true }
-axum = { workspace = true }
 
 # 序列化与数据处理
 serde = { workspace = true }
 serde_json = { workspace = true }
 
 # 数据库与时间
-sqlx = { workspace = true }
 chrono = { workspace = true }
 uuid = { workspace = true }
 
@@ -33,6 +29,8 @@ tracing-subscriber = { workspace = true }
 dotenvy = { workspace = true }
 config = { workspace = true }
 
+# 文档生成
+utoipa = { workspace = true }
 
 [features]
 default = []

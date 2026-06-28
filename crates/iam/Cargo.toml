@@ -29,7 +29,11 @@ tracing-subscriber = { workspace = true }
 # 错误处理
 thiserror = { workspace = true }
 anyhow = { workspace = true }
+strum = { workspace = true }
 
 # 字段验证
 validator = { workspace = true }
 regex = { workspace = true }
+
+# 文档生成
+utoipa = { workspace = true }
