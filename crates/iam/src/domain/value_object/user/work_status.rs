@@ -24,8 +24,8 @@ impl WorkStatus {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
-        match s {
+    pub fn from_storage(raw: &str) -> Self {
+        match raw {
             "InService" => WorkStatus::InService,
             "OnLeave" => WorkStatus::OnLeave,
             _ => WorkStatus::Resigned,

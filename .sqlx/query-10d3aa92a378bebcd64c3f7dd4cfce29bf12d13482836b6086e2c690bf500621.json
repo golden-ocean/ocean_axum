@@ -1,0 +1,316 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM sys_user WHERE mobile = $1 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "staff_no",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "staff_no"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "email",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "mobile",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "mobile"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "gender",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "gender"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "birthday",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "birthday"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "avatar",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "avatar"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "password_hash",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "password_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "password_updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "password_updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "work_status",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "work_status"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "data_scope",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "data_scope"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "is_builtin",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "is_builtin"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "sort",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "sort"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "remark",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "remark"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "status",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "organization_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "organization_id"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "position_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "position_id"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 21,
+        "name": "created_by",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "created_by"
+          }
+        }
+      },
+      {
+        "ordinal": 22,
+        "name": "updated_by",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "updated_by"
+          }
+        }
+      },
+      {
+        "ordinal": 23,
+        "name": "deleted_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "deleted_at"
+          }
+        }
+      },
+      {
+        "ordinal": 24,
+        "name": "deleted_by",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sys_user",
+            "name": "deleted_by"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "10d3aa92a378bebcd64c3f7dd4cfce29bf12d13482836b6086e2c690bf500621"
+}

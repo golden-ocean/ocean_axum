@@ -22,8 +22,8 @@ impl Gender {
     }
 
     /// 从数据库字符串解析
-    pub fn from_str(s: &str) -> Self {
-        match s {
+    pub fn from_storage(raw: &str) -> Self {
+        match raw {
             "Male" => Gender::Male,
             "Female" => Gender::Female,
             _ => Gender::Unknown,

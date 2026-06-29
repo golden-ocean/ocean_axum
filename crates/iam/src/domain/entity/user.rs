@@ -2,7 +2,9 @@ use shared::prelude::{AuditMetadata, DateTime, DeleteMetadata, NaiveDate, Status
 
 use crate::domain::error::UserDomainError;
 use crate::domain::value_object::common::{OrganizationId, PositionId, RoleId, UserId};
-use crate::domain::value_object::user::{DataScope, Email, Gender, Mobile, StaffNo, WorkStatus};
+use crate::domain::value_object::user::{
+    DataScope, Email, Gender, Mobile, PasswordHash, StaffNo, WorkStatus,
+};
 
 #[derive(Debug, Clone)]
 pub struct User {
@@ -15,11 +17,8 @@ pub struct User {
     gender: Gender,
     birthday: Option<NaiveDate>,
     avatar: Option<String>,
-
-    password_hash: String,
-    salt: String,
+    password_hash: PasswordHash,
     password_updated_at: DateTime<Utc>,
-
     work_status: WorkStatus,
     data_scope: DataScope,
     is_builtin: bool,
@@ -39,8 +38,7 @@ impl User {
     /// 创建新用户
     pub fn new(
         username: String,
-        password_hash: String,
-        salt: String,
+        password_hash: PasswordHash,
         staff_no: StaffNo,
         name: String,
         email: Email,
@@ -48,7 +46,6 @@ impl User {
         organization_id: Option<OrganizationId>,
         operator_id: Option<Uuid>,
     ) -> Self {
-        let now = Utc::now();
         Self {
             id: UserId::new(),
             username,
@@ -59,11 +56,8 @@ impl User {
             gender: Gender::Unknown, // 默认未知
             birthday: None,
             avatar: None,
-
             password_hash,
-            salt,
-            password_updated_at: now,
-
+            password_updated_at: DateTime::default(),
             work_status: WorkStatus::InService, // 默认在职
             data_scope: DataScope::SelfOnly,    // 默认最小权限
             is_builtin: false,                  // 业务 API 创建的绝对不是内置账号
@@ -115,8 +109,7 @@ impl User {
     /// 修改密码
     pub fn change_password(
         &mut self,
-        new_hash: String,
-        new_salt: String,
+        new_password_hash: PasswordHash,
         operator_id: Uuid,
     ) -> Result<(), UserDomainError> {
         self.verify_can_modify()?;
@@ -125,12 +118,24 @@ impl User {
             return Err(UserDomainError::UserSuspended);
         }
 
-        self.password_hash = new_hash;
-        self.salt = new_salt;
+        self.password_hash = new_password_hash;
         self.password_updated_at = Utc::now();
-
         self.audit_metadata.update(Some(operator_id));
         Ok(())
+    }
+
+    /// 判断密码是否过期
+    pub fn is_password_expired(&self, max_age_days: i64) -> bool {
+        let now = Utc::now();
+        now.signed_duration_since(self.password_updated_at)
+            .num_days()
+            > max_age_days
+    }
+
+    /// 判断 Token 是否有效（针对密码修改）
+    pub fn is_token_valid_against_password_change(&self, token_issued_at: DateTime<Utc>) -> bool {
+        // 如果 Token 是在密码最后一次修改之前签发的，说明 Token 已失效
+        token_issued_at >= self.password_updated_at
     }
 
     /// 禁用账号
@@ -192,37 +197,45 @@ impl User {
         Ok(())
     }
 
-    /// 从数据重建领域实体
-    pub fn reconstruct(
+    /// 从数据库重建领域实体
+    pub fn from_storage(
         id: UserId,
         username: String,
-        password_hash: String,
-        salt: String,
+        password_hash_raw: String,
         password_updated_at: DateTime<Utc>,
-        staff_no: StaffNo,
+        staff_no_raw: String,
         name: String,
-        email: Email,
-        mobile: Mobile,
-        gender: Gender,
+        email_raw: String,
+        mobile_raw: String,
+        gender_raw: String,
         birthday: Option<NaiveDate>,
         avatar: Option<String>,
-        work_status: WorkStatus,
-        data_scope: DataScope,
+        work_status_raw: String,
+        data_scope_raw: String,
         is_builtin: bool,
         sort: i32,
         remark: Option<String>,
-        status: Status,
+        status_raw: String,
         organization_id: Option<OrganizationId>,
         position_id: Option<PositionId>,
         role_ids: Vec<RoleId>,
         audit_metadata: AuditMetadata,
         delete_metadata: DeleteMetadata,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, UserDomainError> {
+        let staff_no = StaffNo::from_storage(staff_no_raw);
+        let email = Email::from_storage(email_raw)?;
+        let mobile = Mobile::from_storage(mobile_raw)?;
+        let password_hash = PasswordHash::from_storage(password_hash_raw)?;
+        let status =
+            Status::from_str(&status_raw).ok_or(UserDomainError::InvalidFields(status_raw))?;
+        let gender = Gender::from_storage(&gender_raw);
+        let work_status = WorkStatus::from_storage(&work_status_raw);
+        let data_scope = DataScope::from_storage(&data_scope_raw);
+
+        Ok(Self {
             id,
             username,
             password_hash,
-            salt,
             password_updated_at,
             staff_no,
             name,
@@ -242,7 +255,7 @@ impl User {
             role_ids,
             audit_metadata,
             delete_metadata,
-        }
+        })
     }
     /// Getters (只读暴露)
     pub fn id(&self) -> &UserId {
@@ -272,11 +285,8 @@ impl User {
     pub fn avatar(&self) -> Option<&str> {
         self.avatar.as_deref()
     }
-    pub fn password_hash(&self) -> &str {
+    pub fn password_hash(&self) -> &PasswordHash {
         &self.password_hash
-    }
-    pub fn salt(&self) -> &str {
-        &self.salt
     }
     pub fn password_updated_at(&self) -> DateTime<Utc> {
         self.password_updated_at

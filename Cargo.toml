@@ -41,8 +41,8 @@ validator = { version = "0.20", features = ["derive"] }
 regex = { version = "1.12" }
 
 # 加密
-ring = { version = "0.17"}
-hex = { version = "0.4" }
+argon2 = { version = "0.5" , features = ["std","rand"] }
+zeroize = { version = "1.9" }
 
 # 日志
 tracing = { version = "0.1" }

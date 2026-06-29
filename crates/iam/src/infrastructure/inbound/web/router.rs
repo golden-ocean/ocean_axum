@@ -7,9 +7,14 @@ use axum::{
 use sqlx::PgPool;
 
 use crate::{
-    domain::repository::UnitOfWorkManager,
-    infrastructure::persistence::postgres_uow::PostgresUnitOfWorkManager,
-    presentation::web::user_handler,
+    application::ports::outbound::{crypto::PasswordHasher, persistence::UnitOfWorkManager},
+    infrastructure::{
+        inbound::web::user_handler,
+        outbound::{
+            crypto::argon2_password_hasher::Argon2PasswordHasher,
+            persistence::postgres_uow::PostgresUnitOfWorkManager,
+        },
+    },
 };
 
 #[derive(Clone)]
@@ -20,6 +25,7 @@ pub struct IamQueryState {
 #[derive(Clone)]
 pub struct IamCommandState {
     pub uow_manager: Arc<dyn UnitOfWorkManager>,
+    pub password_hasher: Arc<dyn PasswordHasher + Send + Sync>,
 }
 
 /// 模块内部路由表
@@ -29,6 +35,7 @@ pub fn iam_router(pool: PgPool) -> Router {
     };
     let command_state = IamCommandState {
         uow_manager: Arc::new(PostgresUnitOfWorkManager::new(pool)),
+        password_hasher: Arc::new(Argon2PasswordHasher::default()),
     };
 
     let query_routes = Router::new()

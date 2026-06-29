@@ -1,7 +1,8 @@
-use shared::prelude::Pagination;
 use sqlx::PgPool;
 
-use crate::{application::error::IamAppError, domain::repository::error::UserRepoError};
+use shared::prelude::Pagination;
+
+use crate::application::{error::IamAppError, ports::outbound::persistence::UserRepositoryError};
 
 pub struct UserPageQuery {
     pub username: Option<String>,
@@ -43,7 +44,7 @@ pub async fn handle_get_user_page(
     )
     .fetch_one(pool)
     .await
-    .map_err(|e| UserRepoError::Unexpected(e.to_string()))?;
+    .map_err(|e| UserRepositoryError::Unexpected(e.to_string()))?;
 
     let rows = sqlx::query!(
         r#"
@@ -64,7 +65,7 @@ pub async fn handle_get_user_page(
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| UserRepoError::Unexpected(e.to_string()))?;
+    .map_err(|e| UserRepositoryError::Unexpected(e.to_string()))?;
 
     let res: Vec<UserPageItem> = rows
         .into_iter()

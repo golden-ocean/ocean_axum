@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO sys_user (\n                id, username, staff_no, name, email, mobile, gender, birthday, avatar,\n                password_hash, password_updated_at, work_status, data_scope,\n                is_builtin, sort, remark, status,\n                organization_id, position_id,\n                created_at, updated_at, created_by, updated_by, deleted_at, deleted_by\n            ) VALUES (\n                $1, $2, $3, $4, $5, $6, $7, $8, $9,\n                $10, $11, $12, $13, $14, $15, $16, $17, $18,\n                $19, $20, $21, $22, $23, $24, $25\n            )\n            ON CONFLICT (id) DO UPDATE SET\n                username = EXCLUDED.username,\n                staff_no = EXCLUDED.staff_no,\n                name = EXCLUDED.name,\n                email = EXCLUDED.email,\n                mobile = EXCLUDED.mobile,\n                gender = EXCLUDED.gender,\n                birthday = EXCLUDED.birthday,\n                avatar = EXCLUDED.avatar,\n                password_hash = EXCLUDED.password_hash,\n                password_updated_at = EXCLUDED.password_updated_at,\n                work_status = EXCLUDED.work_status,\n                data_scope = EXCLUDED.data_scope,\n                is_builtin = EXCLUDED.is_builtin,\n                sort = EXCLUDED.sort,\n                remark = EXCLUDED.remark,\n                status = EXCLUDED.status,\n                organization_id = EXCLUDED.organization_id,\n                position_id = EXCLUDED.position_id,\n                updated_at = EXCLUDED.updated_at,\n                updated_by = EXCLUDED.updated_by,\n                deleted_at = EXCLUDED.deleted_at,\n                deleted_by = EXCLUDED.deleted_by\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Date",
+        "Varchar",
+        "Varchar",
+        "Timestamptz",
+        "Varchar",
+        "Varchar",
+        "Bool",
+        "Int4",
+        "Varchar",
+        "Varchar",
+        "Uuid",
+        "Uuid",
+        "Timestamptz",
+        "Timestamptz",
+        "Uuid",
+        "Uuid",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f78841f6bfcd2f151fe6199337020535826fd8a2b34971ea6955eb0724d58b2a"
+}

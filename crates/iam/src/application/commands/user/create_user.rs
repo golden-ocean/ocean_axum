@@ -1,16 +1,16 @@
 use shared::prelude::Uuid;
 
 use crate::application::error::IamAppError;
+use crate::application::ports::outbound::crypto::PasswordHasher;
+use crate::application::ports::outbound::persistence::UnitOfWorkManager;
 use crate::domain::entity::User;
 use crate::domain::error::UserDomainError;
-use crate::domain::repository::UnitOfWorkManager;
 use crate::domain::value_object::common::OrganizationId;
-use crate::domain::value_object::user::{Email, Mobile};
+use crate::domain::value_object::user::{Email, Mobile, Password};
 
 pub struct CreateUserCommand {
     pub username: String,
-    pub password_hash: String,
-    pub salt: String,
+    pub password: String,
     pub name: String,
     pub email: String,
     pub mobile: String,
@@ -20,12 +20,14 @@ pub struct CreateUserCommand {
 
 pub async fn handle_create_user(
     uow_manager: &(dyn UnitOfWorkManager + Send + Sync),
+    password_hasher: &dyn PasswordHasher,
     cmd: CreateUserCommand,
 ) -> Result<Uuid, IamAppError> {
     let email_vo = Email::new(cmd.email)?;
     let mobile_vo = Mobile::new(cmd.mobile)?;
     let org_id_vo = cmd.organization_id.map(OrganizationId::from);
-
+    let password_vo = Password::new(cmd.password)?;
+    let password_hash_vo = password_hasher.hash(&password_vo)?;
     let mut uow = uow_manager.start_work().await?;
 
     // 检查用户名是否唯一
@@ -40,13 +42,12 @@ pub async fn handle_create_user(
     if uow.user_repo().exists_by_mobile(&mobile_vo).await? {
         return Err(UserDomainError::MobileAlreadyExists.into());
     }
-    // 5. 核心并发防撞盾：从同一个大事务内部，执行 FOR UPDATE 查出最新全局序号，拼出强类型 StaffNo VO
+
     let staff_no_vo = uow.user_repo().get_next_staff_no().await?;
 
     let new_user = User::new(
         cmd.username,
-        cmd.password_hash,
-        cmd.salt,
+        password_hash_vo,
         staff_no_vo,
         cmd.name,
         email_vo,

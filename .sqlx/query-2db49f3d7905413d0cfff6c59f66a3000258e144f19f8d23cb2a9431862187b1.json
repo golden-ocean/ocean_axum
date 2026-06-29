@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM sys_user_role WHERE user_id = $1 AND role_id = ANY($2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2db49f3d7905413d0cfff6c59f66a3000258e144f19f8d23cb2a9431862187b1"
+}

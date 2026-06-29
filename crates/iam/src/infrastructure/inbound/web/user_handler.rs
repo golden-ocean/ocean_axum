@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 use validator::Validate;
 
-use shared::crypto;
 use shared::prelude::{AppError, Page, Pagination, Res, Uuid};
 
 use crate::{
@@ -17,7 +16,7 @@ use crate::{
         },
         queries::user::{UserPageQuery, handle_get_user_page},
     },
-    presentation::web::{
+    infrastructure::inbound::web::{
         http_error::HttpError,
         router::{IamCommandState, IamQueryState},
     },
@@ -155,16 +154,12 @@ pub async fn create_user(
     req.validate()
         .map_err(|e| AppError::bad_request("VALIDATION_ERROR", e.to_string()))?;
 
-    let (computed_hash, generated_salt) = crypto::hash_password(&req.password)
-        .map_err(|e| anyhow::anyhow!("Password hashing failed: {e}"))?;
-
     // TODO: 替换为真实的 AuthExtractor 提取当前操作人
     let current_operator_id = Some(Uuid::now_v7());
 
     let command = CreateUserCommand {
         username: req.username,
-        password_hash: computed_hash,
-        salt: generated_salt,
+        password: req.password,
         name: req.name,
         email: req.email,
         mobile: req.mobile,
@@ -172,7 +167,8 @@ pub async fn create_user(
         operator_id: current_operator_id,
     };
 
-    let new_user_id = handle_create_user(&*state.uow_manager, command).await?;
+    let new_user_id =
+        handle_create_user(&*state.uow_manager, &*state.password_hasher, command).await?;
 
     Ok(Json(Res::ok(CreateUserRes {
         user_id: new_user_id.to_string(),

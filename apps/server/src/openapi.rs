@@ -1,6 +1,6 @@
 use utoipa::OpenApi;
 
-use iam::presentation::web::openapi::IamApiDoc;
+use iam::infrastructure::inbound::web::openapi::IamApiDoc;
 
 #[derive(OpenApi)]
 #[openapi(

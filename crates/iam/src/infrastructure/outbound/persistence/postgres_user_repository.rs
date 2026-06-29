@@ -4,13 +4,11 @@ use std::collections::HashSet;
 
 use shared::prelude::Uuid;
 
+use crate::application::ports::outbound::persistence::{UserRepository, UserRepositoryError};
 use crate::domain::entity::User;
-use crate::domain::repository::UserRepository;
-use crate::domain::repository::error::UserRepoError;
 use crate::domain::value_object::common::{RoleId, UserId};
 use crate::domain::value_object::user::{Email, Mobile, StaffNo};
-use crate::infrastructure::persistence::mapper::UserMapper;
-use crate::infrastructure::persistence::model::UserRow;
+use crate::infrastructure::outbound::persistence::{mapper::UserMapper, model::UserRow};
 
 /// 基于 PostgreSQL 的用户数据仓储实现适配器
 pub struct PostgresUserRepository<'a> {
@@ -22,22 +20,22 @@ impl<'a> PostgresUserRepository<'a> {
         Self { tx }
     }
 
-    fn map_sqlx_error(e: sqlx::Error) -> UserRepoError {
+    fn map_sqlx_error(e: sqlx::Error) -> UserRepositoryError {
         if let sqlx::Error::Database(pool_err) = &e {
             if pool_err.is_unique_violation() {
                 let constraint = pool_err.constraint().unwrap_or_default();
                 return match constraint {
-                    "uk_sys_user_username" => UserRepoError::UsernameConflict,
-                    "uk_sys_user_email" => UserRepoError::EmailConflict,
-                    "uk_sys_user_mobile" => UserRepoError::MobileConflict,
-                    _ => UserRepoError::UnknownConstraintViolation(constraint.to_string()),
+                    "uk_sys_user_username" => UserRepositoryError::UsernameConflict,
+                    "uk_sys_user_email" => UserRepositoryError::EmailConflict,
+                    "uk_sys_user_mobile" => UserRepositoryError::MobileConflict,
+                    _ => UserRepositoryError::UnknownConstraintViolation(constraint.to_string()),
                 };
             }
         }
-        UserRepoError::Unexpected(e.to_string())
+        UserRepositoryError::Unexpected(e.to_string())
     }
 
-    async fn assemble_user(&mut self, row: UserRow) -> Result<User, UserRepoError> {
+    async fn assemble_user(&mut self, row: UserRow) -> Result<User, UserRepositoryError> {
         let user_id = row.id;
 
         // 从中间关系表获取该用户当前拥建立多对多的角色 ID 集合
@@ -58,7 +56,7 @@ impl<'a> PostgresUserRepository<'a> {
 #[async_trait]
 impl<'a> UserRepository for PostgresUserRepository<'a> {
     /// 统一保存行为 (Upsert - 整体替换并持久化聚合根不变量)
-    async fn save(&mut self, user: &User) -> Result<(), UserRepoError> {
+    async fn save(&mut self, user: &User) -> Result<(), UserRepositoryError> {
         let row = UserMapper::to_row(user);
 
         // 1. 全量 Upsert 写入主表 sys_user
@@ -66,14 +64,14 @@ impl<'a> UserRepository for PostgresUserRepository<'a> {
             r#"
             INSERT INTO sys_user (
                 id, username, staff_no, name, email, mobile, gender, birthday, avatar,
-                password_hash, salt, password_updated_at, work_status, data_scope,
+                password_hash, password_updated_at, work_status, data_scope,
                 is_builtin, sort, remark, status,
                 organization_id, position_id,
                 created_at, updated_at, created_by, updated_by, deleted_at, deleted_by
             ) VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8, $9,
                 $10, $11, $12, $13, $14, $15, $16, $17, $18,
-                $19, $20, $21, $22, $23, $24, $25, $26
+                $19, $20, $21, $22, $23, $24, $25
             )
             ON CONFLICT (id) DO UPDATE SET
                 username = EXCLUDED.username,
@@ -85,7 +83,6 @@ impl<'a> UserRepository for PostgresUserRepository<'a> {
                 birthday = EXCLUDED.birthday,
                 avatar = EXCLUDED.avatar,
                 password_hash = EXCLUDED.password_hash,
-                salt = EXCLUDED.salt,
                 password_updated_at = EXCLUDED.password_updated_at,
                 work_status = EXCLUDED.work_status,
                 data_scope = EXCLUDED.data_scope,
@@ -110,7 +107,6 @@ impl<'a> UserRepository for PostgresUserRepository<'a> {
             row.birthday,
             row.avatar,
             row.password_hash,
-            row.salt,
             row.password_updated_at,
             row.work_status,
             row.data_scope,
@@ -168,8 +164,8 @@ impl<'a> UserRepository for PostgresUserRepository<'a> {
         if !roles_to_insert.is_empty() {
             sqlx::query!(
                 r#"
-                INSERT INTO sys_user_role (user_id, role_id)
-                SELECT $1, * FROM UNNEST($2::uuid[])
+                    INSERT INTO sys_user_role (user_id, role_id)
+                    SELECT $1, * FROM UNNEST($2::uuid[])
                 "#,
                 row.id,
                 &roles_to_insert
@@ -183,7 +179,7 @@ impl<'a> UserRepository for PostgresUserRepository<'a> {
     }
 
     /// 级联物理删除 (连带删除 用户-角色 关系)
-    async fn remove(&mut self, user_id: &UserId) -> Result<(), UserRepoError> {
+    async fn remove(&mut self, user_id: &UserId) -> Result<(), UserRepositoryError> {
         sqlx::query!(
             "DELETE FROM sys_user_role WHERE user_id = $1",
             user_id.value()
@@ -201,7 +197,7 @@ impl<'a> UserRepository for PostgresUserRepository<'a> {
     }
 
     /// 通过 ID 查找用户
-    async fn find_by_id(&mut self, user_id: &UserId) -> Result<Option<User>, UserRepoError> {
+    async fn find_by_id(&mut self, user_id: &UserId) -> Result<Option<User>, UserRepositoryError> {
         let row_opt = sqlx::query_as!(
             UserRow,
             "SELECT * FROM sys_user WHERE id = $1 AND deleted_at IS NULL",
@@ -221,7 +217,10 @@ impl<'a> UserRepository for PostgresUserRepository<'a> {
     }
 
     /// 通过强类型 Username 值对象检索用户
-    async fn find_by_username(&mut self, username: &str) -> Result<Option<User>, UserRepoError> {
+    async fn find_by_username(
+        &mut self,
+        username: &str,
+    ) -> Result<Option<User>, UserRepositoryError> {
         let row_opt = sqlx::query_as!(
             UserRow,
             "SELECT * FROM sys_user WHERE username = $1 AND deleted_at IS NULL",
@@ -241,7 +240,10 @@ impl<'a> UserRepository for PostgresUserRepository<'a> {
     }
 
     /// 通过手机号检索用户
-    async fn find_by_mobile(&mut self, mobile: &Mobile) -> Result<Option<User>, UserRepoError> {
+    async fn find_by_mobile(
+        &mut self,
+        mobile: &Mobile,
+    ) -> Result<Option<User>, UserRepositoryError> {
         let row_opt = sqlx::query_as!(
             UserRow,
             "SELECT * FROM sys_user WHERE mobile = $1 AND deleted_at IS NULL",
@@ -261,7 +263,7 @@ impl<'a> UserRepository for PostgresUserRepository<'a> {
     }
 
     /// 通过邮箱检索用户
-    async fn find_by_email(&mut self, email: &Email) -> Result<Option<User>, UserRepoError> {
+    async fn find_by_email(&mut self, email: &Email) -> Result<Option<User>, UserRepositoryError> {
         let row_opt = sqlx::query_as!(
             UserRow,
             "SELECT * FROM sys_user WHERE email = $1 AND deleted_at IS NULL",
@@ -281,7 +283,7 @@ impl<'a> UserRepository for PostgresUserRepository<'a> {
     }
 
     /// username 唯一性检查
-    async fn exists_by_username(&mut self, username: &str) -> Result<bool, UserRepoError> {
+    async fn exists_by_username(&mut self, username: &str) -> Result<bool, UserRepositoryError> {
         let exists = sqlx::query_scalar!(
                 r#"SELECT EXISTS(SELECT 1 FROM sys_user WHERE username = $1 AND deleted_at IS NULL) as "exists!""#,
                 username
@@ -294,7 +296,7 @@ impl<'a> UserRepository for PostgresUserRepository<'a> {
     }
 
     /// email 唯一性检查
-    async fn exists_by_email(&mut self, email: &Email) -> Result<bool, UserRepoError> {
+    async fn exists_by_email(&mut self, email: &Email) -> Result<bool, UserRepositoryError> {
         let exists = sqlx::query_scalar!(
                 r#"SELECT EXISTS(SELECT 1 FROM sys_user WHERE email = $1 AND deleted_at IS NULL) as "exists!""#,
                 email.as_str()
@@ -307,7 +309,7 @@ impl<'a> UserRepository for PostgresUserRepository<'a> {
     }
 
     /// mobile 唯一性检查
-    async fn exists_by_mobile(&mut self, mobile: &Mobile) -> Result<bool, UserRepoError> {
+    async fn exists_by_mobile(&mut self, mobile: &Mobile) -> Result<bool, UserRepositoryError> {
         let exists = sqlx::query_scalar!(
                 r#"SELECT EXISTS(SELECT 1 FROM sys_user WHERE mobile = $1 AND deleted_at IS NULL) as "exists!""#,
                 mobile.as_str()
@@ -320,15 +322,15 @@ impl<'a> UserRepository for PostgresUserRepository<'a> {
     }
 
     /// 自增工号累计生成
-    async fn get_next_staff_no(&mut self) -> Result<StaffNo, UserRepoError> {
+    async fn get_next_staff_no(&mut self) -> Result<StaffNo, UserRepositoryError> {
         // 全局按工号倒序，施加悲观锁 FOR UPDATE。
         let max_staff_no_opt: Option<String> = sqlx::query_scalar!(
             r#"
-            SELECT staff_no FROM sys_user
-            WHERE deleted_at IS NULL
-            ORDER BY staff_no DESC
-            LIMIT 1
-            FOR UPDATE
+                SELECT staff_no FROM sys_user
+                WHERE deleted_at IS NULL
+                ORDER BY staff_no DESC
+                LIMIT 1
+                FOR UPDATE
             "#
         )
         .fetch_optional(&mut **self.tx)
@@ -337,17 +339,17 @@ impl<'a> UserRepository for PostgresUserRepository<'a> {
 
         // 安全计算下一个全局计数
         let next_seq = match max_staff_no_opt {
-            Some(max_no) => {
-                if let Some(last_dash_idx) = max_no.rfind('-') {
-                    max_no[last_dash_idx + 1..].parse::<i32>().unwrap_or(0) + 1
+            Some(record) => {
+                if let Some(last_dash_idx) = record.rfind('-') {
+                    record[last_dash_idx + 1..].parse::<i32>().unwrap_or(0) + 1
                 } else {
                     1
                 }
             }
-            None => 1, // 库中开天辟地第一条记录
+            None => 1,
         };
 
         // 完美组装返回：STAFF-000001 强类型值对象
-        Ok(StaffNo::reconstitute(format!("STAFF-{:06}", next_seq)))
+        Ok(StaffNo::from_storage(format!("STAFF-{:06}", next_seq)))
     }
 }

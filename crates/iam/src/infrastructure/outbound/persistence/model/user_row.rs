@@ -13,7 +13,6 @@ pub struct UserRow {
     pub avatar: Option<String>,
 
     pub password_hash: String,
-    pub salt: String,
     pub password_updated_at: DateTime<Utc>,
 
     pub work_status: String,

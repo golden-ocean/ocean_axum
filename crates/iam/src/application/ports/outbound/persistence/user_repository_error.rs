@@ -2,11 +2,13 @@ use shared::error::AppError;
 use strum::{EnumDiscriminants, EnumString};
 use thiserror::Error;
 
+use crate::domain::error::UserDomainError;
+
 #[derive(Debug, Error, EnumDiscriminants)]
-#[strum_discriminants(name(UserRepoErrorCode))]
+#[strum_discriminants(name(UserRepositoryErrorCode))]
 #[strum_discriminants(derive(EnumString, strum::Display))]
 #[strum_discriminants(strum(serialize_all = "SCREAMING_SNAKE_CASE"))]
-pub enum UserRepoError {
+pub enum UserRepositoryError {
     #[error("用户记录未找到")]
     NotFound,
 
@@ -28,26 +30,29 @@ pub enum UserRepoError {
     Unexpected(String),
     #[error("数据库错误: {0}")]
     DatabaseError(String),
+
+    #[error("数据完整性损坏: {0}")]
+    DataError(#[from] UserDomainError),
 }
 
-impl UserRepoError {
+impl UserRepositoryError {
     pub fn code(&self) -> String {
-        format!("IAM_USER_REPO_{}", UserRepoErrorCode::from(self))
+        format!("IAM_USER_REPO_{}", UserRepositoryErrorCode::from(self))
     }
 }
 
-impl From<UserRepoError> for AppError {
-    fn from(e: UserRepoError) -> Self {
+impl From<UserRepositoryError> for AppError {
+    fn from(e: UserRepositoryError) -> Self {
         let code = e.code();
         let msg = e.to_string();
-        match UserRepoErrorCode::from(&e) {
-            UserRepoErrorCode::NotFound => AppError::not_found(code, msg),
+        match UserRepositoryErrorCode::from(&e) {
+            UserRepositoryErrorCode::NotFound => AppError::not_found(code, msg),
 
-            UserRepoErrorCode::UsernameConflict
-            | UserRepoErrorCode::EmailConflict
-            | UserRepoErrorCode::MobileConflict => AppError::conflict(code, msg),
+            UserRepositoryErrorCode::UsernameConflict
+            | UserRepositoryErrorCode::EmailConflict
+            | UserRepositoryErrorCode::MobileConflict => AppError::conflict(code, msg),
 
-            UserRepoErrorCode::DatabaseError | UserRepoErrorCode::Unexpected => {
+            UserRepositoryErrorCode::DatabaseError | UserRepositoryErrorCode::Unexpected => {
                 AppError::InternalError(anyhow::anyhow!(e))
             }
             _ => AppError::bad_request(code, msg),

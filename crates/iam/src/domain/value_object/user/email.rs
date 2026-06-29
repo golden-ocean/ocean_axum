@@ -28,4 +28,11 @@ impl Email {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    pub fn from_storage(raw: String) -> Result<Self, UserDomainError> {
+        if raw.is_empty() {
+            return Err(UserDomainError::EmailInvalid);
+        }
+        Ok(Self(raw))
+    }
 }

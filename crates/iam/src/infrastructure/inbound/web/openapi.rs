@@ -2,10 +2,10 @@ use utoipa::OpenApi;
 
 use shared::prelude::Res;
 
-use crate::presentation::web::http_error::HttpError;
-use crate::presentation::web::user_handler;
-use crate::presentation::web::user_handler::{
-    CreateUserReq, CreateUserRes, UpdateUserReq, UpdateUserRes, UserPageRes,
+use crate::infrastructure::inbound::web::{
+    http_error::HttpError,
+    user_handler,
+    user_handler::{CreateUserReq, CreateUserRes, UpdateUserReq, UpdateUserRes, UserPageRes},
 };
 
 #[derive(OpenApi)]

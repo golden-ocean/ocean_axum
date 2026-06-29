@@ -8,11 +8,14 @@ edition = "2024"
 shared = { workspace = true }
 
 # 核心框架与运行时
-# tokio = { workspace = true }
 axum = { workspace = true }
 
 # 核心框架与运行时
 async-trait = { workspace = true }
+
+# 加密
+argon2 = { workspace = true }
+zeroize = { workspace = true }
 
 # 数据库与时间
 sqlx = { workspace = true }

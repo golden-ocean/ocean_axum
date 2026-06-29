@@ -45,8 +45,8 @@ impl DataScope {
     }
 
     /// 从数据库字符串解析
-    pub fn from_str(s: &str) -> Self {
-        match s {
+    pub fn from_storage(raw: &str) -> Self {
+        match raw {
             "All" => DataScope::All,
             "Organization" => DataScope::Organization,
             "OrganizationAndChildren" => DataScope::OrganizationAndChildren,

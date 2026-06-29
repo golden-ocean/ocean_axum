@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT COUNT(1) as \"count!\"\n        FROM sys_user\n        WHERE deleted_at IS NULL\n          AND ($1::varchar IS NULL OR username LIKE '%' || $1 || '%')\n          AND ($2::varchar IS NULL OR email = $2)\n          AND ($3::varchar IS NULL OR status = $3)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "5be2c4a84e556d1e39ce3a2a2befb12bb9c349a9eb9da637df48724c361825ac"
+}

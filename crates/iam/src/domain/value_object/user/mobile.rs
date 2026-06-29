@@ -32,4 +32,11 @@ impl Mobile {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    pub fn from_storage(raw: String) -> Result<Self, UserDomainError> {
+        if raw.len() > 32 {
+            return Err(UserDomainError::MobileInvalid);
+        }
+        Ok(Self(raw))
+    }
 }

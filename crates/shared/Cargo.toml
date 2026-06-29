@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-
 # 序列化与数据处理
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -12,10 +11,6 @@ serde_json = { workspace = true }
 # 数据库与时间
 chrono = { workspace = true }
 uuid = { workspace = true }
-
-# 加密
-ring = { workspace = true }
-hex = { workspace = true }
 
 # 错误处理
 thiserror = { workspace = true }

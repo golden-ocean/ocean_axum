@@ -15,7 +15,6 @@ CREATE TABLE sys_user (
 
     -- 安全凭证
     password_hash VARCHAR(255) NOT NULL,
-    salt VARCHAR(128) NOT NULL,
     password_updated_at TIMESTAMPTZ NOT NULL,
 
     -- 业务状态与控制字段 (对应枚举 Value Object，底层存为 VARCHAR)
@@ -48,7 +47,6 @@ COMMENT ON COLUMN sys_user.gender IS '性别';
 COMMENT ON COLUMN sys_user.birthday IS '生日';
 COMMENT ON COLUMN sys_user.avatar IS '头像';
 COMMENT ON COLUMN sys_user.password_hash IS '密码哈希';
-COMMENT ON COLUMN sys_user.salt IS '加密盐';
 COMMENT ON COLUMN sys_user.password_updated_at IS '密码更新时间';
 COMMENT ON COLUMN sys_user.work_status IS '在职状态(如 InService, Resigned)';
 COMMENT ON COLUMN sys_user.data_scope IS '数据权限范围';

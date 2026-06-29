@@ -3,7 +3,7 @@ use std::time::Duration;
 use axum::{Json, Router, http::StatusCode, routing::get};
 use tower_http::{cors::CorsLayer, timeout::TimeoutLayer, trace::TraceLayer};
 
-use iam::presentation::web::router::iam_router;
+use iam::infrastructure::inbound::web::router::iam_router;
 use utoipa::OpenApi;
 
 use crate::{openapi::ApiDoc, state::AppState};

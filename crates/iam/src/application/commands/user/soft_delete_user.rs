@@ -1,6 +1,6 @@
 use crate::application::error::IamAppError;
+use crate::application::ports::outbound::persistence::UnitOfWorkManager;
 use crate::domain::error::UserDomainError;
-use crate::domain::repository::UnitOfWorkManager;
 use crate::domain::value_object::common::UserId;
 
 pub struct SoftDeleteUserCommand {

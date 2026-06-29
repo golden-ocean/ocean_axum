@@ -32,6 +32,17 @@ pub enum UserDomainError {
     #[error("工号已存在")]
     StaffNoAlreadyExists,
 
+    #[error("密码不能为空")]
+    PasswordEmpty,
+    #[error("密码长度不足")]
+    PasswordTooShort,
+    #[error("密码长度过长")]
+    PasswordTooLong,
+    #[error("密码哈希生成失败")]
+    PasswordHashFailed,
+    #[error("密码哈希格式无效")]
+    PasswordHashInvalid,
+
     #[error("账户已被停用")]
     UserSuspended,
     #[error("用户不存在")]
@@ -67,6 +78,12 @@ impl From<UserDomainError> for AppError {
             | UserDomainErrorCode::EmailInvalid
             | UserDomainErrorCode::MobileInvalid
             | UserDomainErrorCode::StaffNoInvalid => AppError::bad_request(code, msg),
+
+            UserDomainErrorCode::PasswordEmpty
+            | UserDomainErrorCode::PasswordTooShort
+            | UserDomainErrorCode::PasswordTooLong
+            | UserDomainErrorCode::PasswordHashFailed
+            | UserDomainErrorCode::PasswordHashInvalid => AppError::bad_request(code, msg),
 
             _ => AppError::bad_request(code, msg),
         }

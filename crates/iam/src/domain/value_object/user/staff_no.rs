@@ -29,8 +29,8 @@ impl StaffNo {
         Ok(Self(staff_no_str))
     }
 
-    pub fn reconstitute(value: String) -> Self {
-        Self(value)
+    pub fn from_storage(raw: String) -> Self {
+        Self(raw)
     }
 
     pub fn value(&self) -> &str {
